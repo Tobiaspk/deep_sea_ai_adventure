@@ -20,11 +20,38 @@ const render = (state) => {
   renderHud($hud, state);
   bindControls($controls, state);
 
+  // Kill animation overlay
+  if (state.lastKill) {
+    showKillOverlay(state.lastKill);
+    state.lastKill = null; // consume it
+  }
+
   // Attach restart handler if game over
   const restartBtn = document.getElementById('btn-restart');
   if (restartBtn) {
     restartBtn.addEventListener('click', () => showSetup());
   }
+};
+
+/** Show a dramatic kill overlay that auto-dismisses. */
+const showKillOverlay = ({ victim, killer, backfire }) => {
+  const overlay = document.createElement('div');
+  overlay.className = 'kill-overlay';
+  overlay.innerHTML = `
+    <div class="kill-flash"></div>
+    <div class="kill-content">
+      <div class="kill-skull">☠️</div>
+      <div class="kill-text">${backfire ? 'BACKFIRE!' : 'KILLED!'}</div>
+      <div class="kill-detail">${victim} has been slain${backfire ? ' by their own trident!' : ` by ${killer}!`}</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Auto-remove after animation
+  setTimeout(() => {
+    overlay.classList.add('kill-fade-out');
+    setTimeout(() => overlay.remove(), 500);
+  }, 1500);
 };
 
 /* ── setup screen ─────────────────────────────────────────── */

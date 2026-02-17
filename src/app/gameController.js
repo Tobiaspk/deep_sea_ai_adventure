@@ -127,6 +127,16 @@ export const actionTrident = (targetId) => {
   const target = state.players.find((p) => p.id === targetId);
   const attacker = state.players[state.currentPlayerIndex];
   applyTridentAttack(state, targetId);
+
+  // Record kill for animation
+  if (target && target.dead) {
+    state.lastKill = { victim: target.name, killer: attacker.name };
+  } else if (attacker.dead) {
+    state.lastKill = { victim: attacker.name, killer: target.name, backfire: true };
+  } else {
+    state.lastKill = null;
+  }
+
   // Play outcome sound after initial stab
   setTimeout(() => {
     if (target && target.dead) sfxTridentKill();
