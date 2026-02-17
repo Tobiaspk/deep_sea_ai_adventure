@@ -74,6 +74,17 @@ export const canDrop = (player, chips) => {
   return chips[player.position] === null; // space must be empty
 };
 
+/* ── Anchor Boost ─────────────────────────────────────────── */
+
+/** Can the player buy an anchor? Must be on the sub and have enough scored value. */
+export const canBuyAnchor = (player) => {
+  if (player.position !== -1) return false; // must be on submarine
+  if (player.anchorActive) return false; // already bought one
+  // Calculate total scored value
+  const totalScored = player.scored.reduce((sum, c) => sum + c.value, 0);
+  return totalScored >= ANCHOR_COST;
+};
+
 /* ── Depth Charge ─────────────────────────────────────────── */
 
 /** Can the player detonate a depth charge on their current space? */
