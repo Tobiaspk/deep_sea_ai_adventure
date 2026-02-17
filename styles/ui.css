@@ -126,6 +126,16 @@
   background: #e67e22;
 }
 .action-btn.restart:hover { background: #f39c12; }
+.action-btn.trident {
+  background: #8e44ad;
+}
+.action-btn.trident:hover { background: #a855c7; }
+
+/* ── Dead player panel ────────────────────────────────────── */
+.player-panel.dead {
+  opacity: 0.45;
+  border-style: dashed;
+}
 
 /* ── Message box ──────────────────────────────────────────── */
 

@@ -41,6 +41,7 @@ export const createPlayer = (id, name) => ({
   carried: [],           // array of chip objects currently held
   scored: [],            // chips safely brought back (across rounds)
   drowned: false,        // set when oxygen runs out while underwater
+  dead: false,           // killed by Poseidon's Trident this round
 });
 
 /**

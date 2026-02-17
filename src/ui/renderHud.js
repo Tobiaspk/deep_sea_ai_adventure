@@ -50,10 +50,11 @@ export const renderHud = (container, state) => {
     panel.className = 'player-panel' + (idx === state.currentPlayerIndex ? ' active' : '');
     panel.style.borderColor = PLAYER_COLORS[p.id];
 
-    const posLabel = p.position === -1 ? '🚢 Sub' : `Space ${p.position + 1}`;
+    const posLabel = p.dead ? '☠️ Dead' : (p.position === -1 ? '🚢 Sub' : `Space ${p.position + 1}`);
+    if (p.dead) panel.classList.add('dead');
     panel.innerHTML = `
       <div class="panel-name" style="color:${PLAYER_COLORS[p.id]}">${p.name}</div>
-      <div class="panel-pos">${posLabel} ${p.direction === 'up' ? '↑' : '↓'}</div>
+      <div class="panel-pos">${posLabel} ${p.dead ? '' : (p.direction === 'up' ? '↑' : '↓')}</div>
       <div class="panel-carry">Carrying: ${p.carried.length} chip(s)</div>
       <div class="panel-score">Score: ${playerScore(p)}</div>
     `;

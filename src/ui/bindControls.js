@@ -19,9 +19,9 @@ export const bindControls = (container, state) => {
   container.appendChild(heading);
 
   const actions = getAvailableActions();
-  actions.forEach(({ id, label, action }) => {
+  actions.forEach(({ id, label, action, trident }) => {
     const btn = document.createElement('button');
-    btn.className = 'action-btn';
+    btn.className = 'action-btn' + (trident ? ' trident' : '');
     btn.id = `btn-${id}`;
     btn.textContent = label;
     btn.addEventListener('click', action);
@@ -33,7 +33,7 @@ const phaseLabel = (phase) => {
   switch (phase) {
     case 'direction': return 'Choose direction';
     case 'roll': return 'Roll the dice';
-    case 'pickup': return 'Pick up, drop, or skip';
+    case 'pickup': return 'Pick up, drop, attack, or skip';
     default: return '';
   }
 };

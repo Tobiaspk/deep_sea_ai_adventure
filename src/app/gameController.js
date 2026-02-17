@@ -13,9 +13,10 @@ import {
   skipPickup,
   endTurn,
   playerScore,
+  applyTridentAttack,
 } from '../domain/turnEngine.js';
 import { rollDice } from '../infra/rng.js';
-import { canPickUp, canDrop, isOnSubmarine } from '../domain/rules.js';
+import { canPickUp, canDrop, isOnSubmarine, adjacentTargets } from '../domain/rules.js';
 
 let state = null;
 let onStateChange = null; // callback for UI re-render
@@ -96,6 +97,14 @@ export const actionSkip = () => {
   notify();
 };
 
+/** Player uses Poseidon's Trident on an adjacent target. */
+export const actionTrident = (targetId) => {
+  if (!state || state.turnPhase !== 'pickup') return;
+  applyTridentAttack(state, targetId);
+  endTurn(state);
+  notify();
+};
+
 /** Get contextual actions available for the current state. */
 export const getAvailableActions = () => {
   if (!state) return [];
@@ -121,6 +130,11 @@ export const getAvailableActions = () => {
       if (canDrop(player, state.chips) && player.carried.length > 0) {
         actions.push({ id: 'drop', label: '⬇ Drop Chip', action: () => actionDrop() });
       }
+      // Poseidon's Trident — attack adjacent players
+      const targets = adjacentTargets(player, state.players);
+      targets.forEach((t) => {
+        actions.push({ id: `trident-${t.id}`, label: `🔱 Attack ${t.name}`, action: () => actionTrident(t.id), trident: true });
+      });
       actions.push({ id: 'skip', label: 'Skip', action: () => actionSkip() });
       break;
     }

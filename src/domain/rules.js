@@ -54,7 +54,7 @@ export const computeDestination = (currentPos, steps, direction, occupiedPositio
 export const occupiedBy = (players, excludeId) => {
   const s = new Set();
   for (const p of players) {
-    if (p.id !== excludeId && p.position >= 0) s.add(p.position);
+    if (p.id !== excludeId && p.position >= 0 && !p.dead) s.add(p.position);
   }
   return s;
 };
@@ -74,12 +74,32 @@ export const canDrop = (player, chips) => {
   return chips[player.position] === null; // space must be empty
 };
 
+/* ── Poseidon's Trident ───────────────────────────────────── */
+
+/** Get living players on adjacent spaces (position ± 1) who are valid attack targets. */
+export const adjacentTargets = (player, players) => {
+  if (player.position < 0) return [];
+  return players.filter(
+    (p) => p.id !== player.id && !p.dead && p.position >= 0 &&
+           Math.abs(p.position - player.position) === 1
+  );
+};
+
+/** Roll 1d6 for a trident attack. Returns { roll, result: 'kill' | 'backfire' | 'miss' }. */
+export const resolveTridentRoll = () => {
+  const roll = Math.ceil(Math.random() * 6);
+  if (roll >= 5) return { roll, result: 'kill' };
+  if (roll === 1) return { roll, result: 'backfire' };
+  return { roll, result: 'miss' };
+};
+
 /* ── round end checks ─────────────────────────────────────── */
 
-/** A round ends when oxygen hits 0 OR all players are back on the sub. */
+/** A round ends when oxygen hits 0 OR all living players are back on the sub. */
 export const isRoundOver = (oxygen, players) => {
   if (oxygen <= 0) return true;
-  return players.every((p) => p.position === -1);
+  const alive = players.filter((p) => !p.dead);
+  return alive.every((p) => p.position === -1);
 };
 
 /** Is the player safely on the submarine? */

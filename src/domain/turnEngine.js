@@ -9,6 +9,8 @@ import {
   occupiedBy,
   isRoundOver,
   isOnSubmarine,
+  adjacentTargets,
+  resolveTridentRoll,
 } from './rules.js';
 import { STARTING_OXYGEN, TOTAL_ROUNDS } from '../infra/constants.js';
 import { createChips } from './gameState.js';
@@ -102,6 +104,39 @@ export const skipPickup = (state) => {
   return state;
 };
 
+/* ── Poseidon's Trident ───────────────────────────────────── */
+
+export const applyTridentAttack = (state, targetId) => {
+  const attacker = state.players[state.currentPlayerIndex];
+  const target = state.players.find((p) => p.id === targetId);
+  if (!target || target.dead || target.position < 0) return state;
+
+  const { roll, result } = resolveTridentRoll();
+
+  if (result === 'kill') {
+    addLog(state, `🔱 ${attacker.name} attacks ${target.name} with Poseidon's Trident! Rolled ${roll} — ${target.name} is slain! ☠️`);
+    killPlayer(state, target);
+  } else if (result === 'backfire') {
+    addLog(state, `🔱 ${attacker.name} attacks ${target.name} with Poseidon's Trident! Rolled ${roll} — the trident backfires! ${attacker.name} dies! ☠️`);
+    killPlayer(state, attacker);
+  } else {
+    addLog(state, `🔱 ${attacker.name} attacks ${target.name} with Poseidon's Trident! Rolled ${roll} — miss!`);
+  }
+
+  state.turnPhase = 'endTurn';
+  return state;
+};
+
+const killPlayer = (state, player) => {
+  // Carried chips are lost (sink to the abyss)
+  if (player.carried.length > 0) {
+    addLog(state, `  ${player.name} loses ${player.carried.length} carried chip(s) to the deep.`);
+  }
+  player.carried = [];
+  player.dead = true;
+  player.position = -99;  // removed from board, but not on sub
+};
+
 /* ── end turn / round ─────────────────────────────────────── */
 
 export const endTurn = (state) => {
@@ -117,7 +152,19 @@ export const endTurn = (state) => {
 
 const advancePlayer = (state) => {
   const n = state.players.length;
-  let next = (state.currentPlayerIndex + 1) % n;
+  let attempts = 0;
+  let next = state.currentPlayerIndex;
+  while (attempts < n) {
+    next = (next + 1) % n;
+    attempts++;
+    if (state.players[next].dead) {
+      // Dead players still drain oxygen for their (lost) chips — but the cost is 0 since carried is empty
+      // Their turn is skipped
+      addLog(state, `${state.players[next].name} is dead — turn skipped. ☠️`);
+      continue;
+    }
+    break;
+  }
   state.currentPlayerIndex = next;
 };
 
@@ -136,6 +183,7 @@ export const endRound = (state) => {
     // Reset position for next round
     p.position = -1;
     p.direction = 'down';
+    p.dead = false;
   }
 
   // Compact the board: remove nulls, chips stay in order but gaps close
