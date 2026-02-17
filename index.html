@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deep Sea Adventure</title>
+  <link rel="stylesheet" href="styles/base.css" />
+  <link rel="stylesheet" href="styles/board.css" />
+  <link rel="stylesheet" href="styles/ui.css" />
+</head>
+<body>
+  <div class="game-wrapper">
+    <h1>🌊 Deep Sea Adventure</h1>
+
+    <!-- Setup screen -->
+    <div id="setup">
+      <h2>New Game</h2>
+      <div id="player-list">
+        <div class="player-input"><label>Player 1: <input type="text" class="player-name" placeholder="Name" maxlength="12" /></label></div>
+        <div class="player-input"><label>Player 2: <input type="text" class="player-name" placeholder="Name" maxlength="12" /></label></div>
+      </div>
+      <button id="add-player-btn">+ Add Player</button>
+      <br />
+      <button id="start-btn">Start Game</button>
+    </div>
+
+    <!-- Game area -->
+    <div id="hud"></div>
+    <div id="board"></div>
+    <div id="controls"></div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+/* ── Board path ────────────────────────────────────────────── */
+
+.submarine {
+  background: #1a3050;
+  border: 2px solid #3498db;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.6rem;
+  text-align: center;
+  font-size: 1.1rem;
+}
+.sub-label { margin-left: 0.4rem; font-weight: 600; }
+
+.board-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.board-space {
+  position: relative;
+  width: 52px;
+  min-height: 60px;
+  background: #15304a;
+  border: 1px solid #2a5070;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.space-num {
+  font-size: 0.55rem;
+  color: #5a8aaa;
+  position: absolute;
+  bottom: 1px;
+  right: 4px;
+}
+
+/* ── Chips ─────────────────────────────────────────────────── */
+
+.chip {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+}
+.chip.level-1 { background: #27ae60; }
+.chip.level-2 { background: #2980b9; }
+.chip.level-3 { background: #8e44ad; }
+.chip.level-4 { background: #c0392b; }
+.chip.empty   { background: none; color: #3a5a7a; font-size: 1.2rem; }
+
+/* ── Diver tokens ─────────────────────────────────────────── */
+
+.diver-row {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.diver-token {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.4);
+}

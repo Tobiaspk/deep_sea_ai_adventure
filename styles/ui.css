@@ -1,0 +1,182 @@
+/* ── Setup screen ──────────────────────────────────────────── */
+
+#setup {
+  background: #132840;
+  border: 1px solid #2a5070;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin: 1rem auto;
+  max-width: 400px;
+  text-align: center;
+}
+
+.player-input { margin: 0.4rem 0; }
+.player-name {
+  background: #1a3050;
+  border: 1px solid #3a6a90;
+  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+  color: #e0e8f0;
+  font-size: 0.9rem;
+  width: 140px;
+}
+
+#add-player-btn {
+  background: #2a5070;
+  color: #cde;
+  margin-top: 0.5rem;
+}
+#add-player-btn:hover { background: #3a6a90; }
+
+#start-btn {
+  background: #27ae60;
+  color: #fff;
+  margin-top: 0.8rem;
+  padding: 0.6rem 2rem;
+  font-size: 1rem;
+}
+#start-btn:hover { background: #2ecc71; }
+
+/* ── HUD ──────────────────────────────────────────────────── */
+
+.hud-info {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.6rem 0;
+  flex-wrap: wrap;
+}
+.hud-round { font-size: 1rem; }
+
+.hud-oxygen {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.oxygen-label { font-weight: 600; }
+.oxygen-bar-track {
+  width: 140px;
+  height: 14px;
+  background: #1a2a3a;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.oxygen-bar-fill {
+  height: 100%;
+  background: #3498db;
+  border-radius: 7px;
+  transition: width 0.3s;
+}
+.oxygen-value { font-weight: 700; min-width: 24px; }
+
+/* ── Player panels ────────────────────────────────────────── */
+
+.player-panels {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.6rem 0;
+}
+.player-panel {
+  background: #132840;
+  border: 2px solid #2a5070;
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  min-width: 120px;
+  font-size: 0.82rem;
+}
+.player-panel.active {
+  box-shadow: 0 0 8px rgba(52,152,219,0.6);
+}
+.panel-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.15rem; }
+.panel-pos, .panel-carry, .panel-score { opacity: 0.85; }
+
+/* ── Controls ─────────────────────────────────────────────── */
+
+#controls {
+  margin: 0.8rem 0;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.controls-heading {
+  font-weight: 600;
+  margin-right: 0.6rem;
+  font-size: 0.95rem;
+}
+.action-btn {
+  background: #2980b9;
+  color: #fff;
+}
+.action-btn:hover { background: #3498db; }
+.action-btn.restart {
+  background: #e67e22;
+}
+.action-btn.restart:hover { background: #f39c12; }
+
+/* ── Message box ──────────────────────────────────────────── */
+
+.message-box {
+  background: #1a3a5a;
+  border: 2px solid #3498db;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin: 0.6rem 0;
+  text-align: center;
+}
+.message-line {
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.15rem 0;
+  color: #e8f0f8;
+}
+.message-line + .message-line {
+  font-weight: 400;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+/* ── Game log (toggleable) ────────────────────────────────── */
+
+.game-log-wrapper {
+  margin-top: 0.6rem;
+}
+.log-toggle-btn {
+  background: #1a3050;
+  color: #8ab4d0;
+  border: 1px solid #2a5070;
+  border-radius: 6px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-bottom: 0.3rem;
+}
+.log-toggle-btn:hover { background: #24405a; }
+
+.log-entries {
+  background: #0d1e30;
+  border: 1px solid #1a3050;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.log-entry {
+  font-size: 0.78rem;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid #15253a;
+  opacity: 0.85;
+}
+
+/* ── Scoreboard ───────────────────────────────────────────── */
+
+.scoreboard {
+  background: #1a3050;
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 0.8rem 0;
+  text-align: center;
+}
+.score-row { padding: 0.3rem 0; font-size: 1rem; }
+.score-row.winner { font-weight: 700; font-size: 1.15rem; color: #f1c40f; }
