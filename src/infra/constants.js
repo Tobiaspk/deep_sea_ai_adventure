@@ -1,4 +1,4 @@
-/** Game-wide constants derived from the official Deep Sea Adventure rulebook. */
+/** Game-wide constants (inspired by the Deep Sea Adventure rulebook). */
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 6;

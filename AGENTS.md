@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the implementation blueprint for a **very lightweight, simple HTML-based version** of **Deep Sea Adventure**.
+This document defines the implementation blueprint for a **very lightweight, simple HTML-based version** of **Dive, Laugh, Love** (inspired by Deep Sea Adventure).
 
 ---
 

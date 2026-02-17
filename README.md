@@ -1,7 +1,7 @@
-# Deep Sea Adventure — Browser Edition
+# Dive, Laugh, Love — Browser Edition
 
 A lightweight, framework-free HTML5 implementation of the
-[Deep Sea Adventure](https://oinkgames.com/en/games/analog/deep-sea-adventure/)
+Inspired by [Deep Sea Adventure](https://oinkgames.com/en/games/analog/deep-sea-adventure/)
 board game by Oink Games.
 
 ## Quick Start
@@ -64,4 +64,4 @@ node --experimental-vm-modules tests/domain.rules.test.js
 
 ## License
 
-Fan project for educational purposes. Deep Sea Adventure is © Oink Games.
+Fan project for educational purposes. Inspired by Deep Sea Adventure, which is © Oink Games.

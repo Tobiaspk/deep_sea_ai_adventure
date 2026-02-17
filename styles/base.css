@@ -12,6 +12,65 @@ body {
 }
 
 h1 { font-size: 1.6rem; margin: 0.8rem 0 0.4rem; }
+
+/* ── Stylised game title ───────────────────────────────────── */
+.game-title {
+  font-size: 2.6rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 1.2rem 0 0.6rem;
+  line-height: 1.2;
+  font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.title-dive {
+  color: #3498db;
+  text-shadow: 0 0 18px rgba(52,152,219,0.6), 0 2px 4px rgba(0,0,0,0.4);
+  display: inline-block;
+  animation: title-bob 3s ease-in-out infinite;
+  font-style: italic;
+}
+
+.title-laugh {
+  color: #f1c40f;
+  text-shadow: 0 0 18px rgba(241,196,15,0.6), 0 2px 4px rgba(0,0,0,0.4);
+  display: inline-block;
+  animation: title-bob 3s 0.4s ease-in-out infinite;
+  font-style: italic;
+}
+
+.title-love {
+  color: #e74c3c;
+  text-shadow: 0 0 18px rgba(231,76,60,0.6), 0 2px 4px rgba(0,0,0,0.4);
+  display: inline-block;
+  animation: title-bob 3s 0.8s ease-in-out infinite;
+  font-style: italic;
+}
+
+.title-comma {
+  color: #7a9ab8;
+  font-style: normal;
+  margin-right: 0.15em;
+}
+
+.title-wave {
+  display: inline-block;
+  animation: title-wave-rock 2s ease-in-out infinite;
+  margin-left: 0.2em;
+  font-style: normal;
+}
+
+@keyframes title-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes title-wave-rock {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(12deg); }
+  75%      { transform: rotate(-12deg); }
+}
 h2 { font-size: 1.3rem; }
 h3 { font-size: 1rem; margin-bottom: 0.3rem; }
 

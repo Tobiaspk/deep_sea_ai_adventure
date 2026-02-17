@@ -1,4 +1,4 @@
-/** Dice helpers – Deep Sea Adventure uses two dice each showing 1-2-3-1-2-3. */
+/** Dice helpers – Dive, Laugh, Love uses two dice each showing 1-2-3-1-2-3. */
 
 /** Roll a single die (1, 2, or 3 with equal probability). */
 export const rollDie = () => Math.floor(Math.random() * 3) + 1;

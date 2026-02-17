@@ -1,6 +1,6 @@
 /** Lightweight localStorage adapter for optional save/load. */
 
-const STORAGE_KEY = 'deep_sea_adventure_save';
+const STORAGE_KEY = 'dive_laugh_love_save';
 
 export const saveGame = (state) => {
   try {
