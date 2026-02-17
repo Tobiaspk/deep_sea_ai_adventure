@@ -83,7 +83,7 @@ export const applyMovement = (state, diceTotal) => {
   // Reduce movement by number of carried chips
   const effectiveSteps = Math.max(1, adjustedTotal - player.carried.length);
 
-  const dest = computeDestination(player.position, effectiveSteps, player.direction, occupied);
+  const dest = computeDestination(player.position, effectiveSteps, player.direction, occupied, state.boardSize);
   const prevPos = player.position;
   player.position = dest;
 

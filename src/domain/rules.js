@@ -19,16 +19,16 @@ export const consumeOxygen = (oxygen, player) => Math.max(0, oxygen - oxygenCost
  * Skip over positions occupied by other players.
  * Returns the final position index, or -1 if the player returns to the submarine.
  */
-export const computeDestination = (currentPos, steps, direction, occupiedPositions) => {
+export const computeDestination = (currentPos, steps, direction, occupiedPositions, boardSize) => {
   let remaining = steps;
   let pos = currentPos;
 
   if (direction === 'down') {
     while (remaining > 0) {
       pos += 1;
-      if (pos >= BOARD_SIZE) {
+      if (pos >= boardSize) {
         // Can't go past the end — clamp to last space
-        pos = BOARD_SIZE - 1;
+        pos = boardSize - 1;
         break;
       }
       // skip occupied spaces (they don't count as a step)
