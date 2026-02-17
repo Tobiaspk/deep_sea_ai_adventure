@@ -17,6 +17,11 @@ import {
 } from '../domain/turnEngine.js';
 import { rollDice } from '../infra/rng.js';
 import { canPickUp, canDrop, isOnSubmarine, adjacentTargets } from '../domain/rules.js';
+import {
+  sfxDiceRoll, sfxMove, sfxReturnToSub, sfxPickup, sfxDrop,
+  sfxTridentAttack, sfxTridentKill, sfxTridentBackfire, sfxTridentMiss,
+  sfxOxygenLow, sfxRoundEnd, sfxGameOver, sfxClick,
+} from '../infra/sounds.js';
 
 let state = null;
 let onStateChange = null; // callback for UI re-render
@@ -40,15 +45,21 @@ export const actionChooseDirection = (direction) => {
   // Players on the submarine must go down
   if (player.position === -1) direction = 'down';
 
+  sfxClick();
   chooseDirection(state, direction);
 
   // Consume oxygen before rolling
   applyOxygenCost(state);
 
+  // Oxygen warning
+  if (state.oxygen > 0 && state.oxygen <= 5) sfxOxygenLow();
+
   // Check if oxygen ran out
   if (state.oxygen <= 0) {
+    sfxRoundEnd();
     state.turnPhase = 'endTurn';
     endTurn(state);
+    if (state.gameOver) sfxGameOver();
     notify();
     return;
   }
@@ -59,12 +70,18 @@ export const actionChooseDirection = (direction) => {
 /** Roll dice and move the current player. */
 export const actionRoll = () => {
   if (!state || state.turnPhase !== 'roll') return;
+  sfxDiceRoll();
   const { total } = rollDice();
+  const player = state.players[state.currentPlayerIndex];
   applyMovement(state, total);
 
   // If player returned to sub, skip pickup and end turn
   if (state.turnPhase === 'endTurn') {
+    sfxReturnToSub();
     endTurn(state);
+    if (state.gameOver) sfxGameOver();
+  } else {
+    setTimeout(() => sfxMove(), 250); // after dice rattle
   }
   notify();
 };
@@ -74,8 +91,10 @@ export const actionPickUp = () => {
   if (!state || state.turnPhase !== 'pickup') return;
   const player = state.players[state.currentPlayerIndex];
   if (!canPickUp(player, state.chips)) return;
+  sfxPickup();
   pickUpChip(state);
   endTurn(state);
+  if (state.gameOver) sfxGameOver();
   notify();
 };
 
@@ -84,24 +103,38 @@ export const actionDrop = () => {
   if (!state || state.turnPhase !== 'pickup') return;
   const player = state.players[state.currentPlayerIndex];
   if (!canDrop(player, state.chips)) return;
+  sfxDrop();
   dropChip(state);
   endTurn(state);
+  if (state.gameOver) sfxGameOver();
   notify();
 };
 
 /** Player skips pickup/drop. */
 export const actionSkip = () => {
   if (!state || state.turnPhase !== 'pickup') return;
+  sfxClick();
   skipPickup(state);
   endTurn(state);
+  if (state.gameOver) sfxGameOver();
   notify();
 };
 
 /** Player uses Poseidon's Trident on an adjacent target. */
 export const actionTrident = (targetId) => {
   if (!state || state.turnPhase !== 'pickup') return;
+  sfxTridentAttack();
+  const target = state.players.find((p) => p.id === targetId);
+  const attacker = state.players[state.currentPlayerIndex];
   applyTridentAttack(state, targetId);
+  // Play outcome sound after initial stab
+  setTimeout(() => {
+    if (target && target.dead) sfxTridentKill();
+    else if (attacker.dead) sfxTridentBackfire();
+    else sfxTridentMiss();
+  }, 300);
   endTurn(state);
+  if (state.gameOver) sfxGameOver();
   notify();
 };
 
