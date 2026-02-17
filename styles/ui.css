@@ -37,6 +37,18 @@
 }
 #start-btn:hover { background: #2ecc71; }
 
+.disclaimer {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: #7a9ab8;
+  line-height: 1.5;
+}
+.disclaimer a {
+  color: #3498db;
+  text-decoration: underline;
+}
+.disclaimer a:hover { color: #5dade2; }
+
 /* ── HUD ──────────────────────────────────────────────────── */
 
 .hud-info {
