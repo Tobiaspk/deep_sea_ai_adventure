@@ -332,22 +332,22 @@
 
 /* Drown: extra bubbles wobble */
 .event-drown .event-emoji {
-  animation: bubble-rise 1.2s ease-in-out;
+  animation: bubble-rise 2s ease-in-out;
 }
 
 /* Pickup: sparkle bounce */
 .event-pickup .event-emoji {
-  animation: sparkle-bounce 0.5s ease-out;
+  animation: sparkle-bounce 1s ease-out;
 }
 
 /* Return: gentle glow pulse */
 .event-returnSub .event-emoji {
-  animation: glow-pulse 0.8s ease-in-out;
+  animation: glow-pulse 1.5s ease-in-out;
 }
 
 /* Game over: grand spin-in */
 .event-gameOver .event-emoji {
-  animation: trophy-spin 0.8s cubic-bezier(0.2, 1.5, 0.4, 1);
+  animation: trophy-spin 1.2s cubic-bezier(0.2, 1.5, 0.4, 1);
 }
 
 @keyframes event-appear {

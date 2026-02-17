@@ -175,7 +175,7 @@ export const getAvailableActions = () => {
       if (player.position === -1) {
         actions.push({ id: 'direction-down', label: 'Dive ↓', action: () => actionChooseDirection('down') });
       } else {
-        actions.push({ id: 'direction-down', label: 'Continue ↓', action: () => actionChooseDirection('down') });
+        actions.push({ id: 'direction-down', label: 'Deeper ↓', action: () => actionChooseDirection('down') });
         actions.push({ id: 'direction-up', label: 'Turn back ↑', action: () => actionChooseDirection('up') });
       }
       break;

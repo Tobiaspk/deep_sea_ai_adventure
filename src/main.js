@@ -46,7 +46,7 @@ const showKillOverlay = ({ victim, killer, backfire }) => {
   overlay.innerHTML = `
     <div class="kill-flash"></div>
     <div class="kill-content">
-      <div class="kill-skull">☠️</div>
+      <div class="kill-skull">🔱☠️</div>
       <div class="kill-text">${backfire ? 'BACKFIRE!' : 'KILLED!'}</div>
       <div class="kill-detail">${victim} has been slain${backfire ? ' by their own trident!' : ` by ${killer}!`}</div>
     </div>
@@ -57,17 +57,17 @@ const showKillOverlay = ({ victim, killer, backfire }) => {
   setTimeout(() => {
     overlay.classList.add('kill-fade-out');
     setTimeout(() => overlay.remove(), 500);
-  }, 1500);
+  }, 3000);
 };
 
 /** Show a themed event overlay that auto-dismisses. */
 const EVENT_CONFIG = {
-  pickup:   { emoji: '💎', title: 'TREASURE!',       color: '#f1c40f', duration: 1000 },
-  drop:     { emoji: '⬇️',  title: 'DROPPED',         color: '#95a5a6', duration: 800 },
-  returnSub:{ emoji: '🚢', title: 'SAFE!',            color: '#2ecc71', duration: 1200 },
-  drown:    { emoji: '🫧', title: 'DROWNED!',         color: '#3498db', duration: 1800 },
-  roundEnd: { emoji: '🔔', title: 'NEW ROUND',        color: '#e67e22', duration: 1200 },
-  gameOver: { emoji: '🏆', title: 'GAME OVER!',       color: '#f1c40f', duration: 2500 },
+  pickup:   { emoji: '💎', title: 'TREASURE!',       color: '#f1c40f', duration: 4000 },
+  drop:     { emoji: '⬇️',  title: 'DROPPED',         color: '#95a5a6', duration: 2000 },
+  returnSub:{ emoji: '🚢', title: 'SAFE!',            color: '#2ecc71', duration: 2500 },
+  drown:    { emoji: '🫧', title: 'DROWNED!',         color: '#3498db', duration: 3000 },
+  roundEnd: { emoji: '🔔', title: 'NEW ROUND',        color: '#e67e22', duration: 2500 },
+  gameOver: { emoji: '🏆', title: 'GAME OVER!',       color: '#f1c40f', duration: 4000 },
 };
 
 const showEventOverlay = ({ type, player, detail }) => {
