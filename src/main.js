@@ -23,7 +23,13 @@ const render = (state) => {
   // Kill animation overlay
   if (state.lastKill) {
     showKillOverlay(state.lastKill);
-    state.lastKill = null; // consume it
+    state.lastKill = null;
+  }
+
+  // Event animation overlay
+  if (state.lastEvent) {
+    showEventOverlay(state.lastEvent);
+    state.lastEvent = null;
   }
 
   // Attach restart handler if game over
@@ -52,6 +58,39 @@ const showKillOverlay = ({ victim, killer, backfire }) => {
     overlay.classList.add('kill-fade-out');
     setTimeout(() => overlay.remove(), 500);
   }, 1500);
+};
+
+/** Show a themed event overlay that auto-dismisses. */
+const EVENT_CONFIG = {
+  pickup:   { emoji: '💎', title: 'TREASURE!',       color: '#f1c40f', duration: 1000 },
+  drop:     { emoji: '⬇️',  title: 'DROPPED',         color: '#95a5a6', duration: 800 },
+  returnSub:{ emoji: '🚢', title: 'SAFE!',            color: '#2ecc71', duration: 1200 },
+  drown:    { emoji: '🫧', title: 'DROWNED!',         color: '#3498db', duration: 1800 },
+  roundEnd: { emoji: '🔔', title: 'NEW ROUND',        color: '#e67e22', duration: 1200 },
+  gameOver: { emoji: '🏆', title: 'GAME OVER!',       color: '#f1c40f', duration: 2500 },
+};
+
+const showEventOverlay = ({ type, player, detail }) => {
+  const cfg = EVENT_CONFIG[type];
+  if (!cfg) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = `event-overlay event-${type}`;
+  overlay.innerHTML = `
+    <div class="event-flash" style="background:radial-gradient(ellipse at center, ${cfg.color}44 0%, ${cfg.color}22 40%, transparent 70%)"></div>
+    <div class="event-content">
+      <div class="event-emoji">${cfg.emoji}</div>
+      <div class="event-title" style="color:${cfg.color}">${cfg.title}</div>
+      ${player ? `<div class="event-player">${player}</div>` : ''}
+      ${detail ? `<div class="event-detail">${detail}</div>` : ''}
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  setTimeout(() => {
+    overlay.classList.add('event-fade-out');
+    setTimeout(() => overlay.remove(), 500);
+  }, cfg.duration);
 };
 
 /* ── setup screen ─────────────────────────────────────────── */

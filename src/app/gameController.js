@@ -57,9 +57,18 @@ export const actionChooseDirection = (direction) => {
   // Check if oxygen ran out
   if (state.oxygen <= 0) {
     sfxRoundEnd();
+    // Collect who drowned
+    const drowned = state.players.filter(p => p.position >= 0 && !p.dead).map(p => p.name);
     state.turnPhase = 'endTurn';
     endTurn(state);
-    if (state.gameOver) sfxGameOver();
+    if (state.gameOver) {
+      sfxGameOver();
+      state.lastEvent = { type: 'gameOver', player: state.winner };
+    } else if (drowned.length > 0) {
+      state.lastEvent = { type: 'drown', player: drowned.join(', '), detail: 'Oxygen depleted!' };
+    } else {
+      state.lastEvent = { type: 'roundEnd', detail: `Round ${state.round} begins` };
+    }
     notify();
     return;
   }
@@ -78,8 +87,10 @@ export const actionRoll = () => {
   // If player returned to sub, skip pickup and end turn
   if (state.turnPhase === 'endTurn') {
     sfxReturnToSub();
+    const scoredCount = player.carried.length;
     endTurn(state);
-    if (state.gameOver) sfxGameOver();
+    state.lastEvent = { type: 'returnSub', player: player.name, detail: `Secured ${scoredCount} chip(s)!` };
+    if (state.gameOver) { sfxGameOver(); state.lastEvent = { type: 'gameOver', player: state.winner }; }
   } else {
     setTimeout(() => sfxMove(), 250); // after dice rattle
   }
@@ -92,9 +103,13 @@ export const actionPickUp = () => {
   const player = state.players[state.currentPlayerIndex];
   if (!canPickUp(player, state.chips)) return;
   sfxPickup();
+  const chip = state.chips[player.position];
+  const chipLevel = chip ? chip.level : '?';
+  const chipValue = chip ? chip.value : '?';
   pickUpChip(state);
+  state.lastEvent = { type: 'pickup', player: player.name, detail: `Level ${chipLevel} chip (value: ${chipValue})` };
   endTurn(state);
-  if (state.gameOver) sfxGameOver();
+  if (state.gameOver) { sfxGameOver(); state.lastEvent = { type: 'gameOver', player: state.winner }; }
   notify();
 };
 
@@ -105,8 +120,9 @@ export const actionDrop = () => {
   if (!canDrop(player, state.chips)) return;
   sfxDrop();
   dropChip(state);
+  state.lastEvent = { type: 'drop', player: player.name };
   endTurn(state);
-  if (state.gameOver) sfxGameOver();
+  if (state.gameOver) { sfxGameOver(); state.lastEvent = { type: 'gameOver', player: state.winner }; }
   notify();
 };
 
