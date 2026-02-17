@@ -26,6 +26,12 @@ const render = (state) => {
     state.lastKill = null;
   }
 
+  // Explosion animation overlay (Depth Charge)
+  if (state.lastExplosion) {
+    showExplosionOverlay(state.lastExplosion);
+    state.lastExplosion = null;
+  }
+
   // Event animation overlay
   if (state.lastEvent) {
     showEventOverlay(state.lastEvent);
@@ -57,6 +63,37 @@ const showKillOverlay = ({ victim, killer, backfire }) => {
   setTimeout(() => {
     overlay.classList.add('kill-fade-out');
     setTimeout(() => overlay.remove(), 500);
+  }, 3000);
+};
+
+/** Show an epic explosion overlay for Depth Charge. */
+const showExplosionOverlay = ({ player, detail }) => {
+  const overlay = document.createElement('div');
+  overlay.className = 'explosion-overlay';
+  overlay.innerHTML = `
+    <div class="explosion-flash"></div>
+    <div class="explosion-ring explosion-ring-1"></div>
+    <div class="explosion-ring explosion-ring-2"></div>
+    <div class="explosion-ring explosion-ring-3"></div>
+    <div class="explosion-particles">
+      ${Array.from({length: 12}, (_, i) => `<div class="explosion-particle" style="--i:${i}"></div>`).join('')}
+    </div>
+    <div class="explosion-content">
+      <div class="explosion-emoji">💣</div>
+      <div class="explosion-title">DEPTH CHARGE!</div>
+      <div class="explosion-player">${player}</div>
+      ${detail ? `<div class="explosion-detail">${detail}</div>` : ''}
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Shake the whole screen
+  document.body.classList.add('screen-shake');
+  setTimeout(() => document.body.classList.remove('screen-shake'), 600);
+
+  setTimeout(() => {
+    overlay.classList.add('explosion-fade-out');
+    setTimeout(() => overlay.remove(), 600);
   }, 3000);
 };
 

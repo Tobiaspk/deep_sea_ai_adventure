@@ -14,13 +14,14 @@ import {
   endTurn,
   playerScore,
   applyTridentAttack,
+  applyDepthCharge,
 } from '../domain/turnEngine.js';
 import { rollDice } from '../infra/rng.js';
-import { canPickUp, canDrop, isOnSubmarine, adjacentTargets } from '../domain/rules.js';
+import { canPickUp, canDrop, canDepthCharge, isOnSubmarine, adjacentTargets } from '../domain/rules.js';
 import {
   sfxDiceRoll, sfxMove, sfxReturnToSub, sfxPickup, sfxDrop,
   sfxTridentAttack, sfxTridentKill, sfxTridentBackfire, sfxTridentMiss,
-  sfxOxygenLow, sfxRoundEnd, sfxGameOver, sfxClick,
+  sfxOxygenLow, sfxRoundEnd, sfxGameOver, sfxClick, sfxDepthCharge,
 } from '../infra/sounds.js';
 
 let state = null;
@@ -164,6 +165,22 @@ export const actionTrident = (targetId) => {
   notify();
 };
 
+/** Player detonates a Depth Charge, destroying the chip on their space. */
+export const actionDepthCharge = () => {
+  if (!state || state.turnPhase !== 'pickup') return;
+  const player = state.players[state.currentPlayerIndex];
+  if (!canDepthCharge(player, state.chips, state.oxygen)) return;
+  const chip = state.chips[player.position];
+  const chipLevel = chip ? chip.level : '?';
+  const chipValue = chip ? chip.value : '?';
+  sfxDepthCharge();
+  applyDepthCharge(state);
+  state.lastExplosion = { player: player.name, detail: `Level ${chipLevel} chip (value: ${chipValue}) destroyed!` };
+  endTurn(state);
+  if (state.gameOver) { sfxGameOver(); state.lastEvent = { type: 'gameOver', player: state.winner }; }
+  notify();
+};
+
 /** Get contextual actions available for the current state. */
 export const getAvailableActions = () => {
   if (!state) return [];
@@ -188,6 +205,10 @@ export const getAvailableActions = () => {
       }
       if (canDrop(player, state.chips) && player.carried.length > 0) {
         actions.push({ id: 'drop', label: '⬇ Drop Chip', action: () => actionDrop() });
+      }
+      // Depth Charge — destroy chip on current space
+      if (canDepthCharge(player, state.chips, state.oxygen)) {
+        actions.push({ id: 'depth-charge', label: `💣 Depth Charge (${player.depthCharges} left)`, action: () => actionDepthCharge(), depthCharge: true });
       }
       // Poseidon's Trident — attack adjacent players
       const targets = adjacentTargets(player, state.players);

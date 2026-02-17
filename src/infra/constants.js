@@ -29,5 +29,11 @@ export const LEVEL_VALUE_RANGES = {
 
 export const BOARD_SIZE = CHIP_LEVELS.length; // 32 spaces
 
+/** Depth charges each player gets per round. */
+export const DEPTH_CHARGES_PER_ROUND = 1;
+
+/** Oxygen cost to detonate a depth charge. */
+export const DEPTH_CHARGE_OXYGEN_COST = 3;
+
 /** Player colours for rendering. */
 export const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'];

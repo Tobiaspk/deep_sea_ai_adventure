@@ -12,7 +12,7 @@ import {
   adjacentTargets,
   resolveTridentRoll,
 } from './rules.js';
-import { STARTING_OXYGEN, TOTAL_ROUNDS } from '../infra/constants.js';
+import { STARTING_OXYGEN, TOTAL_ROUNDS, DEPTH_CHARGE_OXYGEN_COST, DEPTH_CHARGES_PER_ROUND } from '../infra/constants.js';
 import { createChips } from './gameState.js';
 
 /* ── per-turn oxygen consumption ──────────────────────────── */
@@ -104,6 +104,30 @@ export const skipPickup = (state) => {
   return state;
 };
 
+/* ── Depth Charge ─────────────────────────────────────────── */
+
+export const applyDepthCharge = (state) => {
+  const player = state.players[state.currentPlayerIndex];
+  const pos = player.position;
+  if (pos < 0 || state.chips[pos] === null || player.depthCharges <= 0) return state;
+
+  const chip = state.chips[pos];
+  const chipLevel = chip.level;
+  const chipValue = chip.value;
+
+  // Destroy the chip
+  state.chips[pos] = null;
+  player.depthCharges -= 1;
+
+  // Deduct oxygen cost
+  state.oxygen = Math.max(0, state.oxygen - DEPTH_CHARGE_OXYGEN_COST);
+
+  addLog(state, `💣 ${player.name} detonates a Depth Charge! Destroys a level-${chipLevel} chip (value: ${chipValue}) on space ${pos}. Oxygen -${DEPTH_CHARGE_OXYGEN_COST} → ${state.oxygen}`);
+
+  state.turnPhase = 'endTurn';
+  return state;
+};
+
 /* ── Poseidon's Trident ───────────────────────────────────── */
 
 export const applyTridentAttack = (state, targetId) => {
@@ -184,6 +208,7 @@ export const endRound = (state) => {
     p.position = -1;
     p.direction = 'down';
     p.dead = false;
+    p.depthCharges = DEPTH_CHARGES_PER_ROUND;
   }
 
   // Compact the board: remove nulls, chips stay in order but gaps close

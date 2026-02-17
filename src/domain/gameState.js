@@ -9,6 +9,7 @@ import {
   CHIP_LEVELS,
   LEVEL_VALUE_RANGES,
   BOARD_SIZE,
+  DEPTH_CHARGES_PER_ROUND,
 } from '../infra/constants.js';
 
 /** Generate a random integer in [min, max] inclusive. */
@@ -42,6 +43,7 @@ export const createPlayer = (id, name) => ({
   scored: [],            // chips safely brought back (across rounds)
   drowned: false,        // set when oxygen runs out while underwater
   dead: false,           // killed by Poseidon's Trident this round
+  depthCharges: DEPTH_CHARGES_PER_ROUND, // depth charges remaining this round
 });
 
 /**

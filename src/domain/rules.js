@@ -2,7 +2,7 @@
  * Pure rule functions — no side effects, no DOM.
  */
 
-import { BOARD_SIZE, STARTING_OXYGEN } from '../infra/constants.js';
+import { BOARD_SIZE, STARTING_OXYGEN, DEPTH_CHARGE_OXYGEN_COST } from '../infra/constants.js';
 
 /* ── oxygen ───────────────────────────────────────────────── */
 
@@ -72,6 +72,17 @@ export const canDrop = (player, chips) => {
   if (player.carried.length === 0) return false;
   if (player.position < 0) return false;
   return chips[player.position] === null; // space must be empty
+};
+
+/* ── Depth Charge ─────────────────────────────────────────── */
+
+/** Can the player detonate a depth charge on their current space? */
+export const canDepthCharge = (player, chips, oxygen) => {
+  if (player.position < 0) return false;
+  if (player.depthCharges <= 0) return false;
+  if (chips[player.position] === null) return false; // must have a chip to destroy
+  if (oxygen < DEPTH_CHARGE_OXYGEN_COST) return false; // not enough oxygen
+  return true;
 };
 
 /* ── Poseidon's Trident ───────────────────────────────────── */

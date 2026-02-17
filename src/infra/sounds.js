@@ -122,6 +122,28 @@ export const sfxGameOver = () => {
   });
 };
 
+/** Depth Charge — deep explosion with rumble. */
+export const sfxDepthCharge = () => {
+  const c = getCtx();
+  // Initial blast — loud noise burst
+  playNoise(0.15, 0.4);
+  // Deep boom
+  playTone(60, 0.5, 'sawtooth', 0.35);
+  // Secondary rumble crackle
+  setTimeout(() => {
+    playNoise(0.25, 0.25);
+    playTone(45, 0.6, 'sawtooth', 0.2);
+  }, 100);
+  // Debris rattle
+  setTimeout(() => {
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => playNoise(0.03, 0.12), i * 40);
+    }
+  }, 250);
+  // Fading low rumble
+  setTimeout(() => playTone(35, 0.8, 'sawtooth', 0.1), 400);
+};
+
 /** Button click — subtle tick. */
 export const sfxClick = () => {
   playTone(660, 0.04, 'square', 0.08);
