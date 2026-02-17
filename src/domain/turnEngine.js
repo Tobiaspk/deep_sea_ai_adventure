@@ -12,7 +12,7 @@ import {
   adjacentTargets,
   resolveTridentRoll,
 } from './rules.js';
-import { STARTING_OXYGEN, TOTAL_ROUNDS, DEPTH_CHARGE_OXYGEN_COST, DEPTH_CHARGES_PER_ROUND } from '../infra/constants.js';
+import { STARTING_OXYGEN, TOTAL_ROUNDS, DEPTH_CHARGE_OXYGEN_COST, DEPTH_CHARGES_PER_ROUND, ANCHOR_COST, ANCHOR_MULTIPLIER } from '../infra/constants.js';
 import { createChips } from './gameState.js';
 
 /* ── per-turn oxygen consumption ──────────────────────────── */
@@ -43,28 +43,62 @@ export const chooseDirection = (state, direction) => {
   return state;
 };
 
+/* ── Anchor Boost ─────────────────────────────────────────── */
+
+export const buyAnchor = (state) => {
+  const player = state.players[state.currentPlayerIndex];
+  // Deduct ANCHOR_COST value from scored chips (remove cheapest chips first)
+  let remaining = ANCHOR_COST;
+  // Sort scored by value ascending so we burn cheapest first
+  player.scored.sort((a, b) => a.value - b.value);
+  while (remaining > 0 && player.scored.length > 0) {
+    const chip = player.scored[0];
+    if (chip.value <= remaining) {
+      remaining -= chip.value;
+      player.scored.shift();
+    } else {
+      // Chip is worth more than remaining cost — reduce its value
+      chip.value -= remaining;
+      remaining = 0;
+    }
+  }
+  player.anchorActive = true;
+  addLog(state, `⚓ ${player.name} purchases an Anchor Boost! (spent ${ANCHOR_COST} value)`);
+  return state;
+};
+
 /* ── movement ─────────────────────────────────────────────── */
 
 export const applyMovement = (state, diceTotal) => {
   const player = state.players[state.currentPlayerIndex];
   const occupied = occupiedBy(state.players, player.id);
 
+  // Apply anchor multiplier if active
+  let adjustedTotal = diceTotal;
+  if (player.anchorActive) {
+    adjustedTotal = diceTotal * ANCHOR_MULTIPLIER;
+    player.anchorActive = false; // consumed
+  }
+
   // Reduce movement by number of carried chips
-  const effectiveSteps = Math.max(1, diceTotal - player.carried.length);
+  const effectiveSteps = Math.max(1, adjustedTotal - player.carried.length);
 
   const dest = computeDestination(player.position, effectiveSteps, player.direction, occupied);
   const prevPos = player.position;
   player.position = dest;
 
   state.diceResult = diceTotal;
+  state.anchorUsedThisRoll = adjustedTotal !== diceTotal; // track if anchor was used for UI
 
   if (dest === -1) {
     // Returned to submarine — score carried chips
     player.scored.push(...player.carried);
     player.carried = [];
-    addLog(state, `${player.name} rolled ${diceTotal} (moves ${effectiveSteps}) and returned to the submarine! 🚢`);
+    const anchorTag = adjustedTotal !== diceTotal ? ` ⚓×${ANCHOR_MULTIPLIER}→${adjustedTotal}` : '';
+    addLog(state, `${player.name} rolled ${diceTotal}${anchorTag} (moves ${effectiveSteps}) and returned to the submarine! 🚢`);
   } else {
-    addLog(state, `${player.name} rolled ${diceTotal} (moves ${effectiveSteps}), lands on space ${dest}.`);
+    const anchorTag = adjustedTotal !== diceTotal ? ` ⚓×${ANCHOR_MULTIPLIER}→${adjustedTotal}` : '';
+    addLog(state, `${player.name} rolled ${diceTotal}${anchorTag} (moves ${effectiveSteps}), lands on space ${dest}.`);
   }
 
   state.turnPhase = dest >= 0 ? 'pickup' : 'endTurn';
@@ -209,6 +243,7 @@ export const endRound = (state) => {
     p.direction = 'down';
     p.dead = false;
     p.depthCharges = DEPTH_CHARGES_PER_ROUND;
+    p.anchorActive = false;
   }
 
   // Compact the board: remove nulls, chips stay in order but gaps close

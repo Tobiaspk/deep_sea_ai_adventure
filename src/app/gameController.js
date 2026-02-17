@@ -15,13 +15,14 @@ import {
   playerScore,
   applyTridentAttack,
   applyDepthCharge,
+  buyAnchor,
 } from '../domain/turnEngine.js';
 import { rollDice } from '../infra/rng.js';
-import { canPickUp, canDrop, canDepthCharge, isOnSubmarine, adjacentTargets } from '../domain/rules.js';
+import { canPickUp, canDrop, canDepthCharge, canBuyAnchor, isOnSubmarine, adjacentTargets } from '../domain/rules.js';
 import {
   sfxDiceRoll, sfxMove, sfxReturnToSub, sfxPickup, sfxDrop,
   sfxTridentAttack, sfxTridentKill, sfxTridentBackfire, sfxTridentMiss,
-  sfxOxygenLow, sfxRoundEnd, sfxGameOver, sfxClick, sfxDepthCharge,
+  sfxOxygenLow, sfxRoundEnd, sfxGameOver, sfxClick, sfxDepthCharge, sfxAnchor,
 } from '../infra/sounds.js';
 
 let state = null;
@@ -74,6 +75,17 @@ export const actionChooseDirection = (direction) => {
     return;
   }
 
+  notify();
+};
+
+/** Player buys an Anchor Boost while on the submarine. */
+export const actionBuyAnchor = () => {
+  if (!state || state.turnPhase !== 'direction') return;
+  const player = state.players[state.currentPlayerIndex];
+  if (!canBuyAnchor(player)) return;
+  sfxAnchor();
+  buyAnchor(state);
+  state.lastAnchor = { player: player.name };
   notify();
 };
 
@@ -190,7 +202,12 @@ export const getAvailableActions = () => {
   switch (state.turnPhase) {
     case 'direction':
       if (player.position === -1) {
-        actions.push({ id: 'direction-down', label: 'Dive ↓', action: () => actionChooseDirection('down') });
+        // On submarine — can buy anchor before diving
+        if (canBuyAnchor(player) && !player.anchorActive) {
+          actions.push({ id: 'buy-anchor', label: `⚓ Buy Anchor (cost: 3 pts)`, action: () => actionBuyAnchor(), anchor: true });
+        }
+        const anchorLabel = player.anchorActive ? '⚓ Dive ↓ (×5!)' : 'Dive ↓';
+        actions.push({ id: 'direction-down', label: anchorLabel, action: () => actionChooseDirection('down') });
       } else {
         actions.push({ id: 'direction-down', label: 'Deeper ↓', action: () => actionChooseDirection('down') });
         actions.push({ id: 'direction-up', label: 'Turn back ↑', action: () => actionChooseDirection('up') });

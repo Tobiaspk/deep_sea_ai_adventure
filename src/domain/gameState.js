@@ -44,6 +44,7 @@ export const createPlayer = (id, name) => ({
   drowned: false,        // set when oxygen runs out while underwater
   dead: false,           // killed by Poseidon's Trident this round
   depthCharges: DEPTH_CHARGES_PER_ROUND, // depth charges remaining this round
+  anchorActive: false,   // true if anchor purchased — next roll is multiplied
 });
 
 /**

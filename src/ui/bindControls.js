@@ -19,9 +19,9 @@ export const bindControls = (container, state) => {
   container.appendChild(heading);
 
   const actions = getAvailableActions();
-  actions.forEach(({ id, label, action, trident, depthCharge }) => {
+  actions.forEach(({ id, label, action, trident, depthCharge, anchor }) => {
     const btn = document.createElement('button');
-    btn.className = 'action-btn' + (trident ? ' trident' : '') + (depthCharge ? ' depth-charge' : '');
+    btn.className = 'action-btn' + (trident ? ' trident' : '') + (depthCharge ? ' depth-charge' : '') + (anchor ? ' anchor' : '');
     btn.id = `btn-${id}`;
     btn.textContent = label;
     btn.addEventListener('click', action);

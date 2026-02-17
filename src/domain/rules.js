@@ -2,7 +2,7 @@
  * Pure rule functions — no side effects, no DOM.
  */
 
-import { BOARD_SIZE, STARTING_OXYGEN, DEPTH_CHARGE_OXYGEN_COST } from '../infra/constants.js';
+import { BOARD_SIZE, STARTING_OXYGEN, DEPTH_CHARGE_OXYGEN_COST, ANCHOR_COST } from '../infra/constants.js';
 
 /* ── oxygen ───────────────────────────────────────────────── */
 

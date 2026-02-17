@@ -26,6 +26,12 @@ const render = (state) => {
     state.lastKill = null;
   }
 
+  // Anchor sinking animation overlay
+  if (state.lastAnchor) {
+    showAnchorOverlay(state.lastAnchor);
+    state.lastAnchor = null;
+  }
+
   // Explosion animation overlay (Depth Charge)
   if (state.lastExplosion) {
     showExplosionOverlay(state.lastExplosion);
@@ -63,6 +69,35 @@ const showKillOverlay = ({ victim, killer, backfire }) => {
   setTimeout(() => {
     overlay.classList.add('kill-fade-out');
     setTimeout(() => overlay.remove(), 500);
+  }, 3000);
+};
+
+/** Show a dramatic sinking anchor overlay. */
+const showAnchorOverlay = ({ player }) => {
+  const overlay = document.createElement('div');
+  overlay.className = 'anchor-overlay';
+  overlay.innerHTML = `
+    <div class="anchor-water">
+      <div class="anchor-ripple anchor-ripple-1"></div>
+      <div class="anchor-ripple anchor-ripple-2"></div>
+      <div class="anchor-ripple anchor-ripple-3"></div>
+    </div>
+    <div class="anchor-chain"></div>
+    <div class="anchor-icon">⚓</div>
+    <div class="anchor-bubbles">
+      ${Array.from({length: 10}, (_, i) => `<div class="anchor-bubble" style="--b:${i}"></div>`).join('')}
+    </div>
+    <div class="anchor-content">
+      <div class="anchor-title">ANCHOR BOOST!</div>
+      <div class="anchor-player">${player}</div>
+      <div class="anchor-detail">Next roll ×5!</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  setTimeout(() => {
+    overlay.classList.add('anchor-fade-out');
+    setTimeout(() => overlay.remove(), 600);
   }, 3000);
 };
 

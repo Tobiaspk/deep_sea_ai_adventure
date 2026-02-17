@@ -144,6 +144,26 @@ export const sfxDepthCharge = () => {
   setTimeout(() => playTone(35, 0.8, 'sawtooth', 0.1), 400);
 };
 
+/** Anchor Boost — heavy chain rattle then deep splash. */
+export const sfxAnchor = () => {
+  // Chain rattle
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => {
+      playTone(300 + Math.random() * 200, 0.04, 'square', 0.12);
+      playNoise(0.03, 0.08);
+    }, i * 45);
+  }
+  // Heavy metallic clank
+  setTimeout(() => playTone(150, 0.15, 'sawtooth', 0.25), 350);
+  // Water splash
+  setTimeout(() => {
+    playNoise(0.3, 0.2);
+    playTone(100, 0.3, 'sine', 0.15);
+  }, 450);
+  // Deep sinking rumble
+  setTimeout(() => playTone(55, 0.6, 'sine', 0.12), 600);
+};
+
 /** Button click — subtle tick. */
 export const sfxClick = () => {
   playTone(660, 0.04, 'square', 0.08);

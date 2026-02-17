@@ -35,5 +35,11 @@ export const DEPTH_CHARGES_PER_ROUND = 1;
 /** Oxygen cost to detonate a depth charge. */
 export const DEPTH_CHARGE_OXYGEN_COST = 3;
 
+/** Cost (in scored value) to purchase an anchor. */
+export const ANCHOR_COST = 3;
+
+/** Roll multiplier when an anchor is active. */
+export const ANCHOR_MULTIPLIER = 5;
+
 /** Player colours for rendering. */
 export const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'];

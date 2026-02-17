@@ -565,3 +565,194 @@
   70%      { transform: translate(-2px, 1px); }
   80%      { transform: translate(1px, -1px); }
 }
+
+/* ── Anchor button ────────────────────────────────────────── */
+.action-btn.anchor {
+  background: #1a6b4a;
+  border: 2px solid #27ae60;
+}
+.action-btn.anchor:hover { background: #27ae60; }
+
+/* ── Anchor sinking overlay ───────────────────────────────── */
+
+.anchor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: kill-appear 0.2s ease-out;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center top, rgba(10,40,80,0.3) 0%, transparent 60%);
+}
+
+/* Water surface ripples */
+.anchor-water {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.anchor-ripple {
+  position: absolute;
+  width: 60px;
+  height: 20px;
+  border: 3px solid rgba(100,200,255,0.6);
+  border-radius: 50%;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+}
+
+.anchor-ripple-1 {
+  animation: anchor-ripple-expand 1.5s 0.3s ease-out forwards;
+  border-color: rgba(100,200,255,0.8);
+}
+.anchor-ripple-2 {
+  animation: anchor-ripple-expand 1.8s 0.5s ease-out forwards;
+  border-color: rgba(80,160,220,0.6);
+}
+.anchor-ripple-3 {
+  animation: anchor-ripple-expand 2.1s 0.7s ease-out forwards;
+  border-color: rgba(60,120,180,0.4);
+}
+
+@keyframes anchor-ripple-expand {
+  0%   { transform: translateX(-50%) scale(0); opacity: 1; }
+  100% { transform: translateX(-50%) scaleX(12) scaleY(3); opacity: 0; }
+}
+
+/* Chain trailing behind the anchor */
+.anchor-chain {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: 4px;
+  height: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    #8a8a7a 0px, #8a8a7a 6px,
+    #5a5a4a 6px, #5a5a4a 10px,
+    transparent 10px, transparent 12px
+  );
+  transform: translateX(-50%);
+  animation: anchor-chain-grow 2s 0.1s ease-in forwards;
+  opacity: 0.7;
+}
+
+@keyframes anchor-chain-grow {
+  0%   { height: 0; }
+  50%  { height: 35vh; }
+  100% { height: 60vh; opacity: 0.2; }
+}
+
+/* The anchor itself — sinks from top to center then fades deeper */
+.anchor-icon {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 5rem;
+  filter: drop-shadow(0 0 15px rgba(100,180,255,0.6)) drop-shadow(0 4px 8px rgba(0,0,0,0.8));
+  animation: anchor-sink 2.5s 0.1s cubic-bezier(0.1, 0.4, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes anchor-sink {
+  0%   { top: 5%; opacity: 0; transform: translateX(-50%) rotate(-10deg) scale(1.2); }
+  8%   { opacity: 1; }
+  15%  { top: 20%; transform: translateX(-50%) rotate(5deg) scale(1); }
+  30%  { top: 35%; transform: translateX(-50%) rotate(-3deg); }
+  50%  { top: 50%; transform: translateX(-50%) rotate(2deg); }
+  70%  { top: 62%; transform: translateX(-50%) rotate(-1deg); opacity: 0.8; }
+  100% { top: 80%; transform: translateX(-50%) rotate(0deg) scale(0.7); opacity: 0.15; }
+}
+
+/* Rising bubbles from the sinking anchor */
+.anchor-bubbles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.anchor-bubble {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(180,220,255,0.7), rgba(100,180,255,0.2));
+  border: 1px solid rgba(150,200,255,0.4);
+  left: calc(45% + var(--b) * 1.5%);
+  bottom: 20%;
+  opacity: 0;
+  animation: anchor-bubble-rise 2s calc(0.3s + var(--b) * 0.2s) ease-out forwards;
+}
+
+.anchor-bubble:nth-child(odd) {
+  width: 8px;
+  height: 8px;
+}
+
+.anchor-bubble:nth-child(3n) {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes anchor-bubble-rise {
+  0%   { transform: translateY(0) translateX(0) scale(0.3); opacity: 0; }
+  15%  { opacity: 0.8; transform: translateY(-30px) translateX(5px) scale(0.7); }
+  40%  { transform: translateY(-80px) translateX(-8px) scale(1); opacity: 0.7; }
+  70%  { transform: translateY(-150px) translateX(6px) scale(1.1); opacity: 0.4; }
+  100% { transform: translateY(-250px) translateX(-3px) scale(0.6); opacity: 0; }
+}
+
+/* Text content */
+.anchor-content {
+  position: relative;
+  text-align: center;
+  margin-top: -8rem;
+  animation: anchor-text-appear 0.6s 0.4s ease-out both;
+}
+
+.anchor-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #4dd0e1;
+  text-shadow: 0 0 20px rgba(77,208,225,0.8), 0 0 40px rgba(40,150,180,0.4), 0 2px 4px rgba(0,0,0,0.8);
+  letter-spacing: 0.12em;
+}
+
+.anchor-player {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #b0e0e8;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  margin-top: 0.15rem;
+}
+
+.anchor-detail {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #f1c40f;
+  text-shadow: 0 0 12px rgba(241,196,15,0.6), 0 2px 4px rgba(0,0,0,0.8);
+  margin-top: 0.3rem;
+  animation: anchor-x5-pulse 0.6s 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes anchor-text-appear {
+  0%   { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes anchor-x5-pulse {
+  0%   { transform: scale(1); }
+  100% { transform: scale(1.15); text-shadow: 0 0 20px rgba(241,196,15,0.9), 0 2px 4px rgba(0,0,0,0.8); }
+}
+
+.anchor-fade-out {
+  opacity: 0;
+  transition: opacity 0.6s ease-out;
+}
