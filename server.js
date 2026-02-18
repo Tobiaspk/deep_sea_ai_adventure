@@ -213,9 +213,11 @@ const endRound = (state) => {
     return state;
   }
   state.round += 1; state.oxygen = STARTING_OXYGEN;
-  state.currentPlayerIndex = 0; state.turnPhase = 'direction';
+  state.currentPlayerIndex = (state.round - 1) % state.players.length;
+  state.turnPhase = 'direction';
   state.diceResult = null;
-  addLog(state, `=== Round ${state.round} begins. Oxygen: ${state.oxygen} ===`);
+  const starter = state.players[state.currentPlayerIndex].name;
+  addLog(state, `=== Round ${state.round} begins. ${starter} goes first. Oxygen: ${state.oxygen} ===`);
   return state;
 };
 
@@ -363,7 +365,7 @@ const handleSkip = (state) => {
   if (state.turnPhase !== 'pickup') return null;
   state.turnPhase = 'endTurn';
   endTurn(state);
-  const event = {};
+  const event = { lastSkip: true };
   if (state.gameOver) event.lastEvent = { type: 'gameOver', player: state.winner };
   return event;
 };

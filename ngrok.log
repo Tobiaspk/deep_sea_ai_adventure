@@ -1,0 +1,15 @@
+t=2026-02-17T19:52:18-0500 lvl=info msg="no configuration paths supplied"
+t=2026-02-17T19:52:18-0500 lvl=info msg="using configuration at default config path" path="/Users/krauset/Library/Application Support/ngrok/ngrok.yml"
+t=2026-02-17T19:52:18-0500 lvl=info msg="open config file" path="/Users/krauset/Library/Application Support/ngrok/ngrok.yml" err=nil
+t=2026-02-17T19:52:18-0500 lvl=info msg="FIPS 140 mode" enabled=false
+t=2026-02-17T19:52:18-0500 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2026-02-17T19:52:18-0500 lvl=info msg="client session established" obj=tunnels.session
+t=2026-02-17T19:52:18-0500 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2026-02-17T19:52:18-0500 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:8080 url=https://unsupple-unhostilely-darwin.ngrok-free.dev
+t=2026-02-17T19:52:20-0500 lvl=info msg=start pg=/api/tunnels id=e1a5662da70eb2ea
+t=2026-02-17T19:52:20-0500 lvl=info msg=end pg=/api/tunnels id=e1a5662da70eb2ea status=200 dur=238.959µs
+t=2026-02-17T19:52:23-0500 lvl=warn msg="failed to check for update" obj=updater err="Post \"https://update.ngrok-agent.com/check\": context deadline exceeded"
+t=2026-02-17T19:53:41-0500 lvl=info msg=start pg=/api/tunnels id=7a76fc655ccfb8ef
+t=2026-02-17T19:53:41-0500 lvl=info msg=end pg=/api/tunnels id=7a76fc655ccfb8ef status=200 dur=423.5µs
+t=2026-02-17T19:55:56-0500 lvl=info msg="received stop request" obj=app stopReq="{err:<nil> restart:false}"
+t=2026-02-17T19:55:56-0500 lvl=info msg="session closing" obj=tunnels.session err=nil

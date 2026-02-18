@@ -5,16 +5,75 @@
 
 import { startGame, getState, receiveState, setMode, getMode, isMyTurn, setRenderCallback } from './app/gameController.js';
 import { renderBoard } from './ui/renderBoard.js';
-import { renderHud } from './ui/renderHud.js';
+import { renderHud, renderGameLog } from './ui/renderHud.js';
 import { bindControls } from './ui/bindControls.js';
 import { connect, createRoom, joinRoom, startOnlineGame, restartOnlineGame, disconnect } from './infra/network.js';
 
 const $board    = document.getElementById('board');
 const $hud      = document.getElementById('hud');
 const $controls = document.getElementById('controls');
+const $gameLog  = document.getElementById('game-log');
 const $setup    = document.getElementById('setup');
 const $modeSelect = document.getElementById('mode-select');
 const $lobby    = document.getElementById('lobby');
+
+/* ── Number popup animation ───────────────────────────────── */
+
+let _prevOxygen = null;
+let _prevDice = null;
+let _prevScores = null;
+
+const showNumberPopup = (text, x, y, color = '#f1c40f') => {
+  const popup = document.createElement('div');
+  popup.className = 'number-popup';
+  popup.textContent = text;
+  popup.style.color = color;
+  popup.style.left = `${x}px`;
+  popup.style.top = `${y}px`;
+  document.body.appendChild(popup);
+  setTimeout(() => popup.remove(), 900);
+};
+
+const detectNumberChanges = (state) => {
+  // Oxygen change
+  if (_prevOxygen !== null && state.oxygen !== _prevOxygen) {
+    const diff = state.oxygen - _prevOxygen;
+    const oxyEl = document.querySelector('.oxygen-value');
+    if (oxyEl) {
+      const rect = oxyEl.getBoundingClientRect();
+      const color = diff < 0 ? '#e74c3c' : '#2ecc71';
+      showNumberPopup(`${diff > 0 ? '+' : ''}${diff}`, rect.left + rect.width / 2, rect.top, color);
+    }
+  }
+  _prevOxygen = state.oxygen;
+
+  // Dice roll
+  if (state.diceResult && state.diceResult !== _prevDice) {
+    const heading = document.querySelector('.controls-heading');
+    if (heading) {
+      const rect = heading.getBoundingClientRect();
+      showNumberPopup(`🎲 ${state.diceResult}`, rect.left + rect.width / 2, rect.top - 10, '#3498db');
+    }
+  }
+  _prevDice = state.diceResult;
+
+  // Score changes per player
+  const currentScores = state.players.map(p => p.scored.reduce((s, c) => s + c.value, 0));
+  if (_prevScores) {
+    state.players.forEach((p, i) => {
+      if (currentScores[i] !== _prevScores[i]) {
+        const diff = currentScores[i] - _prevScores[i];
+        const panel = document.querySelectorAll('.player-panel')[i];
+        if (panel) {
+          const rect = panel.getBoundingClientRect();
+          const color = diff > 0 ? '#2ecc71' : '#e74c3c';
+          showNumberPopup(`${diff > 0 ? '+' : ''}${diff} pts`, rect.left + rect.width / 2, rect.top - 5, color);
+        }
+      }
+    });
+  }
+  _prevScores = currentScores;
+};
 
 /* ── render callback ──────────────────────────────────────── */
 
@@ -22,11 +81,16 @@ const render = (state) => {
   renderBoard($board, state);
   renderHud($hud, state);
   bindControls($controls, state, { online: getMode() === 'online', isMyTurn: isMyTurn() });
+  renderGameLog($gameLog, state);
+
+  // Number popup animations for changed values
+  requestAnimationFrame(() => detectNumberChanges(state));
 
   if (state.lastKill)      { showKillOverlay(state.lastKill);      state.lastKill = null; }
   if (state.lastAnchor)    { showAnchorOverlay(state.lastAnchor);  state.lastAnchor = null; }
   if (state.lastExplosion) { showExplosionOverlay(state.lastExplosion); state.lastExplosion = null; }
   if (state.lastEvent)     { showEventOverlay(state.lastEvent);    state.lastEvent = null; }
+  if (state.lastSkip)      { showSkipAnimation();                  state.lastSkip = null; }
 
   // Attach restart handler if game over
   const restartBtn = document.getElementById('btn-restart');
@@ -39,6 +103,20 @@ const render = (state) => {
       }
     });
   }
+};
+
+/** Show a quick skip whoosh animation. */
+const showSkipAnimation = () => {
+  const overlay = document.createElement('div');
+  overlay.className = 'skip-overlay';
+  overlay.innerHTML = `
+    <div class="skip-content">
+      <div class="skip-emoji">⏭️</div>
+      <div class="skip-text">SKIP</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(() => { overlay.classList.add('skip-fade-out'); setTimeout(() => overlay.remove(), 300); }, 600);
 };
 
 /** Show a dramatic kill overlay that auto-dismisses. */
@@ -143,6 +221,7 @@ const hideAll = () => {
   $board.innerHTML = '';
   $hud.innerHTML = '';
   $controls.innerHTML = '';
+  $gameLog.innerHTML = '';
 };
 
 const showModeSelect = () => {

@@ -65,6 +65,7 @@ export const receiveState = (serverState, playerId, event, renderCallback) => {
   if (event.lastAnchor)    state.lastAnchor = event.lastAnchor;
   if (event.lastExplosion) state.lastExplosion = event.lastExplosion;
   if (event.lastEvent)     state.lastEvent = event.lastEvent;
+  if (event.lastSkip)      state.lastSkip = true;
 
   notify();
 };
@@ -179,6 +180,7 @@ export const actionSkip = () => {
   if (!state || state.turnPhase !== 'pickup') return;
   sfxClick();
   skipPickup(state);
+  state.lastSkip = true;
   endTurn(state);
   if (state.gameOver) sfxGameOver();
   notify();

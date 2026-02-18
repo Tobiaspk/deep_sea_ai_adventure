@@ -868,3 +868,100 @@
   opacity: 0;
   transition: opacity 0.6s ease-out;
 }
+
+/* ── Skip overlay animation ───────────────────────────────── */
+
+.skip-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: skip-appear 0.15s ease-out;
+}
+
+.skip-content {
+  text-align: center;
+  animation: skip-whoosh 0.5s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+.skip-emoji {
+  font-size: 3rem;
+  filter: drop-shadow(0 0 10px rgba(149,165,166,0.6));
+}
+
+.skip-text {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #95a5a6;
+  text-shadow: 0 0 10px rgba(149,165,166,0.5), 0 2px 4px rgba(0,0,0,0.6);
+  letter-spacing: 0.15em;
+  margin-top: 0.1rem;
+}
+
+.skip-fade-out {
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+@keyframes skip-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes skip-whoosh {
+  0%   { transform: scale(0.3) translateX(-40px); opacity: 0; }
+  50%  { transform: scale(1.15) translateX(5px); opacity: 1; }
+  100% { transform: scale(1) translateX(0); }
+}
+
+/* ── Number popup animation ───────────────────────────────── */
+
+.number-popup {
+  position: fixed;
+  z-index: 10000;
+  font-size: 1.6rem;
+  font-weight: 900;
+  pointer-events: none;
+  text-shadow: 0 0 8px currentColor, 0 2px 4px rgba(0,0,0,0.8);
+  transform: translate(-50%, 0);
+  animation: number-pop 0.85s cubic-bezier(0.2, 1.3, 0.4, 1) forwards;
+}
+
+@keyframes number-pop {
+  0%   { transform: translate(-50%, 0) scale(0.3); opacity: 0; }
+  20%  { transform: translate(-50%, -10px) scale(1.5); opacity: 1; }
+  50%  { transform: translate(-50%, -25px) scale(1.1); opacity: 0.9; }
+  100% { transform: translate(-50%, -50px) scale(0.8); opacity: 0; }
+}
+
+/* ── Recent log (always visible, bottom) ──────────────────── */
+
+.log-recent {
+  background: #1a3a5a;
+  border: 1px solid #2a5070;
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  margin: 0.6rem 0 0.3rem;
+}
+
+.log-recent-line {
+  font-size: 0.8rem;
+  color: #b0c8d8;
+  padding: 0.1rem 0;
+  opacity: 0.9;
+}
+
+.log-recent-line:last-child {
+  font-weight: 600;
+  color: #e0e8f0;
+  opacity: 1;
+}
+
+/* ── Game log container ───────────────────────────────────── */
+
+#game-log {
+  margin-top: 0.2rem;
+}

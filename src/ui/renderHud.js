@@ -1,5 +1,6 @@
 /**
- * Render the HUD — message box, oxygen gauge, round info, player panels, and toggleable log.
+ * Render the HUD — message box, oxygen gauge, round info, player panels.
+ * Also exports renderGameLog for rendering below controls.
  */
 
 import { PLAYER_COLORS } from '../infra/constants.js';
@@ -11,20 +12,6 @@ let logVisible = false;
 
 export const renderHud = (container, state) => {
   container.innerHTML = '';
-
-  // ── Last-action message box ──
-  const lastMessages = state.log.slice(-3);
-  if (lastMessages.length > 0) {
-    const msgBox = document.createElement('div');
-    msgBox.className = 'message-box';
-    lastMessages.forEach((msg) => {
-      const line = document.createElement('div');
-      line.className = 'message-line';
-      line.textContent = msg;
-      msgBox.appendChild(line);
-    });
-    container.appendChild(msgBox);
-  }
 
   // ── Oxygen & round info ──
   const info = document.createElement('div');
@@ -52,10 +39,13 @@ export const renderHud = (container, state) => {
 
     const posLabel = p.dead ? '☠️ Dead' : (p.position === -1 ? '🚢 Sub' : `Space ${p.position + 1}`);
     if (p.dead) panel.classList.add('dead');
+    const carryLabel = p.carried.length > 0
+      ? `Carrying: ${p.carried.length} chip(s)`
+      : 'Carrying: 0 chip(s)';
     panel.innerHTML = `
       <div class="panel-name" style="color:${PLAYER_COLORS[p.id]}">${p.name}</div>
       <div class="panel-pos">${posLabel} ${p.dead ? '' : (p.direction === 'up' ? '↑' : '↓')}</div>
-      <div class="panel-carry">Carrying: ${p.carried.length} chip(s)</div>
+      <div class="panel-carry">${carryLabel}</div>
       <div class="panel-score">Score: ${playerScore(p)}${p.anchorActive ? ' ⚓' : ''}</div>
     `;
     panels.appendChild(panel);
@@ -72,8 +62,30 @@ export const renderHud = (container, state) => {
         .join('');
     container.appendChild(sb);
   }
+};
 
-  // ── Toggleable log ──
+/**
+ * Render the game log section (recent summary + toggleable full log).
+ * This is rendered below #controls so it appears at the very bottom.
+ */
+export const renderGameLog = (container, state) => {
+  container.innerHTML = '';
+
+  // ── Recent log lines (always visible, last 3) ──
+  const recentLines = state.log.slice(-3);
+  if (recentLines.length > 0) {
+    const recentBox = document.createElement('div');
+    recentBox.className = 'log-recent';
+    recentLines.forEach((msg) => {
+      const line = document.createElement('div');
+      line.className = 'log-recent-line';
+      line.textContent = msg;
+      recentBox.appendChild(line);
+    });
+    container.appendChild(recentBox);
+  }
+
+  // ── Toggleable full log ──
   const logWrapper = document.createElement('div');
   logWrapper.className = 'game-log-wrapper';
 

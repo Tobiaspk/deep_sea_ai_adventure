@@ -262,10 +262,12 @@ export const endRound = (state) => {
 
   state.round += 1;
   state.oxygen = STARTING_OXYGEN;
-  state.currentPlayerIndex = 0;
+  // Rotate starting player: round 1 → player 0, round 2 → player 1, etc.
+  state.currentPlayerIndex = (state.round - 1) % state.players.length;
   state.turnPhase = 'direction';
   state.diceResult = null;
-  addLog(state, `=== Round ${state.round} begins. Oxygen: ${state.oxygen} ===`);
+  const starter = state.players[state.currentPlayerIndex].name;
+  addLog(state, `=== Round ${state.round} begins. ${starter} goes first. Oxygen: ${state.oxygen} ===`);
   return state;
 };
 
