@@ -1,11 +1,15 @@
 /**
  * Bind player action buttons to the controller.
+ * In online mode, buttons are only shown when it's the local player's turn.
  */
 
 import { getAvailableActions } from '../app/gameController.js';
 
-export const bindControls = (container, state) => {
+export const bindControls = (container, state, opts = {}) => {
   container.innerHTML = '';
+
+  const online = opts.online || false;
+  const myTurn = opts.isMyTurn !== undefined ? opts.isMyTurn : true;
 
   if (state.gameOver) {
     container.innerHTML = '<button id="btn-restart" class="action-btn restart">🔄 New Game</button>';
@@ -15,6 +19,13 @@ export const bindControls = (container, state) => {
   const currentPlayer = state.players[state.currentPlayerIndex];
   const heading = document.createElement('div');
   heading.className = 'controls-heading';
+
+  if (online && !myTurn) {
+    heading.textContent = `Waiting for ${currentPlayer.name}…`;
+    container.appendChild(heading);
+    return;
+  }
+
   heading.textContent = `${currentPlayer.name}'s turn — ${phaseLabel(state.turnPhase)}`;
   container.appendChild(heading);
 

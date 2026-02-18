@@ -1,3 +1,115 @@
+/* ── Mode selection ────────────────────────────────────────── */
+
+#mode-select {
+  text-align: center;
+  margin: 2rem auto;
+  max-width: 400px;
+}
+
+.mode-btn {
+  display: inline-block;
+  background: linear-gradient(135deg, #1a3050, #2a5070);
+  color: #e0e8f0;
+  border: 1px solid #3a6a90;
+  border-radius: 8px;
+  padding: 0.8rem 1.6rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  margin: 0.5rem;
+  transition: background 0.2s, transform 0.1s;
+}
+.mode-btn:hover {
+  background: linear-gradient(135deg, #2a5070, #3a7a9a);
+  transform: translateY(-1px);
+}
+.mode-btn:active { transform: translateY(0); }
+
+.back-btn {
+  background: transparent;
+  color: #7a9ab0;
+  border: 1px solid #3a5a70;
+  border-radius: 6px;
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+}
+.back-btn:hover { color: #cde; border-color: #5a8aaa; }
+
+/* ── Online lobby ─────────────────────────────────────────── */
+
+#lobby {
+  background: #132840;
+  border: 1px solid #2a5070;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin: 1rem auto;
+  max-width: 480px;
+  text-align: center;
+}
+
+.lobby-section {
+  margin: 1rem 0;
+}
+.lobby-section h3 { color: #7ab8d8; margin-bottom: 0.5rem; }
+
+.lobby-divider {
+  color: #5a7a90;
+  margin: 1rem 0;
+  font-style: italic;
+}
+
+.lobby-section label {
+  display: block;
+  margin: 0.3rem 0;
+}
+
+.lobby-section input {
+  background: #1a3050;
+  border: 1px solid #3a6a90;
+  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+  color: #e0e8f0;
+  font-size: 0.9rem;
+  width: 140px;
+}
+
+.room-code-display {
+  font-size: 1.3rem;
+  color: #f1c40f;
+  margin: 1rem 0 0.5rem;
+}
+.room-code-display strong {
+  font-size: 1.8rem;
+  letter-spacing: 4px;
+  background: #1a3050;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  border: 2px dashed #f1c40f;
+}
+
+.lobby-player {
+  background: #1a3050;
+  border: 1px solid #2a5070;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  margin: 0.3rem 0;
+  color: #cde;
+}
+
+.lobby-error {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  min-height: 1.2rem;
+  margin: 0.5rem 0;
+}
+
+.lobby-hint {
+  color: #7a9ab0;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
 /* ── Setup screen ──────────────────────────────────────────── */
 
 #setup {

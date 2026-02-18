@@ -1,53 +1,43 @@
 /**
  * Application entry point.
- * Wires up the setup form, starts the game, and re-renders on every state change.
+ * Wires up mode selection, local setup, online lobby, and game rendering.
  */
 
-import { startGame, getState } from './app/gameController.js';
+import { startGame, getState, receiveState, setMode, getMode, isMyTurn, setRenderCallback } from './app/gameController.js';
 import { renderBoard } from './ui/renderBoard.js';
 import { renderHud } from './ui/renderHud.js';
 import { bindControls } from './ui/bindControls.js';
+import { connect, createRoom, joinRoom, startOnlineGame, restartOnlineGame, disconnect } from './infra/network.js';
 
-const $board = document.getElementById('board');
-const $hud = document.getElementById('hud');
+const $board    = document.getElementById('board');
+const $hud      = document.getElementById('hud');
 const $controls = document.getElementById('controls');
-const $setup = document.getElementById('setup');
+const $setup    = document.getElementById('setup');
+const $modeSelect = document.getElementById('mode-select');
+const $lobby    = document.getElementById('lobby');
 
 /* ── render callback ──────────────────────────────────────── */
 
 const render = (state) => {
   renderBoard($board, state);
   renderHud($hud, state);
-  bindControls($controls, state);
+  bindControls($controls, state, { online: getMode() === 'online', isMyTurn: isMyTurn() });
 
-  // Kill animation overlay
-  if (state.lastKill) {
-    showKillOverlay(state.lastKill);
-    state.lastKill = null;
-  }
-
-  // Anchor sinking animation overlay
-  if (state.lastAnchor) {
-    showAnchorOverlay(state.lastAnchor);
-    state.lastAnchor = null;
-  }
-
-  // Explosion animation overlay (Depth Charge)
-  if (state.lastExplosion) {
-    showExplosionOverlay(state.lastExplosion);
-    state.lastExplosion = null;
-  }
-
-  // Event animation overlay
-  if (state.lastEvent) {
-    showEventOverlay(state.lastEvent);
-    state.lastEvent = null;
-  }
+  if (state.lastKill)      { showKillOverlay(state.lastKill);      state.lastKill = null; }
+  if (state.lastAnchor)    { showAnchorOverlay(state.lastAnchor);  state.lastAnchor = null; }
+  if (state.lastExplosion) { showExplosionOverlay(state.lastExplosion); state.lastExplosion = null; }
+  if (state.lastEvent)     { showEventOverlay(state.lastEvent);    state.lastEvent = null; }
 
   // Attach restart handler if game over
   const restartBtn = document.getElementById('btn-restart');
   if (restartBtn) {
-    restartBtn.addEventListener('click', () => showSetup());
+    restartBtn.addEventListener('click', () => {
+      if (getMode() === 'online') {
+        restartOnlineGame();
+      } else {
+        showModeSelect();
+      }
+    });
   }
 };
 
@@ -64,12 +54,7 @@ const showKillOverlay = ({ victim, killer, backfire }) => {
     </div>
   `;
   document.body.appendChild(overlay);
-
-  // Auto-remove after animation
-  setTimeout(() => {
-    overlay.classList.add('kill-fade-out');
-    setTimeout(() => overlay.remove(), 500);
-  }, 3000);
+  setTimeout(() => { overlay.classList.add('kill-fade-out'); setTimeout(() => overlay.remove(), 500); }, 3000);
 };
 
 /** Show a dramatic sinking anchor overlay. */
@@ -94,11 +79,7 @@ const showAnchorOverlay = ({ player }) => {
     </div>
   `;
   document.body.appendChild(overlay);
-
-  setTimeout(() => {
-    overlay.classList.add('anchor-fade-out');
-    setTimeout(() => overlay.remove(), 600);
-  }, 3000);
+  setTimeout(() => { overlay.classList.add('anchor-fade-out'); setTimeout(() => overlay.remove(), 600); }, 3000);
 };
 
 /** Show an epic explosion overlay for Depth Charge. */
@@ -121,18 +102,11 @@ const showExplosionOverlay = ({ player, detail }) => {
     </div>
   `;
   document.body.appendChild(overlay);
-
-  // Shake the whole screen
   document.body.classList.add('screen-shake');
   setTimeout(() => document.body.classList.remove('screen-shake'), 600);
-
-  setTimeout(() => {
-    overlay.classList.add('explosion-fade-out');
-    setTimeout(() => overlay.remove(), 600);
-  }, 3000);
+  setTimeout(() => { overlay.classList.add('explosion-fade-out'); setTimeout(() => overlay.remove(), 600); }, 3000);
 };
 
-/** Show a themed event overlay that auto-dismisses. */
 const EVENT_CONFIG = {
   pickup:   { emoji: '💎', title: 'TREASURE!',       color: '#f1c40f', duration: 4000 },
   drop:     { emoji: '⬇️',  title: 'DROPPED',         color: '#95a5a6', duration: 2000 },
@@ -145,7 +119,6 @@ const EVENT_CONFIG = {
 const showEventOverlay = ({ type, player, detail }) => {
   const cfg = EVENT_CONFIG[type];
   if (!cfg) return;
-
   const overlay = document.createElement('div');
   overlay.className = `event-overlay event-${type}`;
   overlay.innerHTML = `
@@ -158,21 +131,56 @@ const showEventOverlay = ({ type, player, detail }) => {
     </div>
   `;
   document.body.appendChild(overlay);
-
-  setTimeout(() => {
-    overlay.classList.add('event-fade-out');
-    setTimeout(() => overlay.remove(), 500);
-  }, cfg.duration);
+  setTimeout(() => { overlay.classList.add('event-fade-out'); setTimeout(() => overlay.remove(), 500); }, cfg.duration);
 };
 
-/* ── setup screen ─────────────────────────────────────────── */
+/* ── screen management ────────────────────────────────────── */
 
-const showSetup = () => {
-  $setup.style.display = '';
+const hideAll = () => {
+  $modeSelect.style.display = 'none';
+  $setup.style.display = 'none';
+  $lobby.style.display = 'none';
   $board.innerHTML = '';
   $hud.innerHTML = '';
   $controls.innerHTML = '';
 };
+
+const showModeSelect = () => {
+  hideAll();
+  $modeSelect.style.display = '';
+};
+
+const showSetup = () => {
+  hideAll();
+  $setup.style.display = '';
+};
+
+const showLobby = () => {
+  hideAll();
+  $lobby.style.display = '';
+  document.getElementById('lobby-connect').style.display = '';
+  document.getElementById('lobby-waiting').style.display = 'none';
+  document.getElementById('lobby-error').textContent = '';
+};
+
+/* ── mode selection ───────────────────────────────────────── */
+
+document.getElementById('mode-local-btn').addEventListener('click', () => {
+  setMode('local');
+  showSetup();
+});
+
+document.getElementById('mode-online-btn').addEventListener('click', () => {
+  showLobby();
+});
+
+document.getElementById('back-to-mode-btn').addEventListener('click', showModeSelect);
+document.getElementById('back-to-mode-btn-2').addEventListener('click', () => {
+  disconnect();
+  showModeSelect();
+});
+
+/* ── local setup ──────────────────────────────────────────── */
 
 document.getElementById('start-btn').addEventListener('click', () => {
   const nameInputs = document.querySelectorAll('.player-name');
@@ -185,13 +193,12 @@ document.getElementById('start-btn').addEventListener('click', () => {
     return;
   }
 
-  $setup.style.display = 'none';
+  hideAll();
   startGame(names, render);
 });
 
-// Dynamic player name inputs
 const $playerList = document.getElementById('player-list');
-const $addPlayer = document.getElementById('add-player-btn');
+const $addPlayer  = document.getElementById('add-player-btn');
 let playerCount = 2;
 
 const addPlayerInput = () => {
@@ -205,3 +212,79 @@ const addPlayerInput = () => {
 };
 
 $addPlayer.addEventListener('click', addPlayerInput);
+
+/* ── online lobby ─────────────────────────────────────────── */
+
+let isHost = false;
+
+const $lobbyError = document.getElementById('lobby-error');
+const showError = (msg) => { $lobbyError.textContent = msg; setTimeout(() => { $lobbyError.textContent = ''; }, 4000); };
+
+document.getElementById('create-room-btn').addEventListener('click', async () => {
+  const name = document.getElementById('create-name').value.trim();
+  if (!name) { showError('Enter your name.'); return; }
+
+  try {
+    await connect({
+      onState:      (state, playerId, event) => { hideAll(); receiveState(state, playerId, event, render); },
+      onLobby:      (msg) => showLobbyWaiting(msg),
+      onError:      (msg) => showError(msg),
+      onCreated:    () => {},
+      onDisconnect: (n) => showError(`${n} disconnected.`),
+      onClose:      () => showError('Connection lost.'),
+    });
+    isHost = true;
+    createRoom(name);
+  } catch {
+    showError('Could not connect to server.');
+  }
+});
+
+document.getElementById('join-room-btn').addEventListener('click', async () => {
+  const name = document.getElementById('join-name').value.trim();
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  if (!name) { showError('Enter your name.'); return; }
+  if (!code || code.length !== 4) { showError('Enter a 4-letter room code.'); return; }
+
+  try {
+    await connect({
+      onState:      (state, playerId, event) => { hideAll(); receiveState(state, playerId, event, render); },
+      onLobby:      (msg) => showLobbyWaiting(msg),
+      onError:      (msg) => showError(msg),
+      onCreated:    () => {},
+      onDisconnect: (n) => showError(`${n} disconnected.`),
+      onClose:      () => showError('Connection lost.'),
+    });
+    isHost = false;
+    joinRoom(code, name);
+  } catch {
+    showError('Could not connect to server.');
+  }
+});
+
+const showLobbyWaiting = ({ code, names, you }) => {
+  setMode('online');
+  document.getElementById('lobby-connect').style.display = 'none';
+  const $waiting = document.getElementById('lobby-waiting');
+  $waiting.style.display = '';
+  document.getElementById('room-code-value').textContent = code;
+
+  const $players = document.getElementById('lobby-players');
+  $players.innerHTML = '<h3>Players in Room:</h3>' +
+    names.map((n, i) => `<div class="lobby-player">${i + 1}. ${n}${n === you ? ' (you)' : ''}${i === 0 ? ' 👑' : ''}</div>`).join('');
+
+  // Only host sees start button
+  const $startBtn = document.getElementById('start-online-btn');
+  const $waitMsg  = document.getElementById('lobby-wait-msg');
+  if (isHost) {
+    $startBtn.style.display = '';
+    $waitMsg.style.display = 'none';
+  } else {
+    $startBtn.style.display = 'none';
+    $waitMsg.style.display = '';
+  }
+};
+
+document.getElementById('start-online-btn').addEventListener('click', () => {
+  startOnlineGame();
+});

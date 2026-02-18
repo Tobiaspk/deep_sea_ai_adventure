@@ -17,9 +17,15 @@
       <span class="title-wave">🌊</span>
     </h1>
 
-    <!-- Setup screen -->
-    <div id="setup">
-      <h2>New Game</h2>
+    <!-- Mode selection -->
+    <div id="mode-select">
+      <button id="mode-local-btn" class="mode-btn">🎲 Local Game</button>
+      <button id="mode-online-btn" class="mode-btn">🌐 Online Multiplayer</button>
+    </div>
+
+    <!-- Local setup screen -->
+    <div id="setup" style="display:none">
+      <h2>New Local Game</h2>
       <div id="player-list">
         <div class="player-input"><label>Player 1: <input type="text" class="player-name" placeholder="Name" maxlength="12" /></label></div>
         <div class="player-input"><label>Player 2: <input type="text" class="player-name" placeholder="Name" maxlength="12" /></label></div>
@@ -27,6 +33,44 @@
       <button id="add-player-btn">+ Add Player</button>
       <br />
       <button id="start-btn">Start Game</button>
+      <button id="back-to-mode-btn" class="back-btn">← Back</button>
+      <p class="disclaimer">
+        This is an unofficial fan project and is <strong>not affiliated</strong> with the original creators.<br />
+        Inspired by Deep Sea Adventure, an awesome board game by <strong>Oink Games</strong> — if you enjoy it, please
+        <a href="https://oinkgames.com/en/games/analog/deep-sea-adventure/" target="_blank" rel="noopener">support the creators</a>
+        and buy the original! 🎲
+      </p>
+    </div>
+
+    <!-- Online lobby -->
+    <div id="lobby" style="display:none">
+      <h2>Online Multiplayer</h2>
+      <div id="lobby-connect">
+        <div class="lobby-section">
+          <h3>Create a Room</h3>
+          <label>Your Name: <input type="text" id="create-name" placeholder="Name" maxlength="12" /></label>
+          <br />
+          <button id="create-room-btn" class="mode-btn">Create Room</button>
+        </div>
+        <div class="lobby-divider">— or —</div>
+        <div class="lobby-section">
+          <h3>Join a Room</h3>
+          <label>Your Name: <input type="text" id="join-name" placeholder="Name" maxlength="12" /></label>
+          <br />
+          <label>Room Code: <input type="text" id="join-code" placeholder="ABCD" maxlength="4" style="text-transform:uppercase" /></label>
+          <br />
+          <button id="join-room-btn" class="mode-btn">Join Room</button>
+        </div>
+      </div>
+      <div id="lobby-waiting" style="display:none">
+        <div class="room-code-display">Room Code: <strong id="room-code-value"></strong></div>
+        <p>Share this code with friends to let them join!</p>
+        <div id="lobby-players"></div>
+        <button id="start-online-btn" class="mode-btn" style="display:none">🚀 Start Game</button>
+        <p id="lobby-wait-msg" class="lobby-hint">Waiting for host to start…</p>
+      </div>
+      <div id="lobby-error" class="lobby-error"></div>
+      <button id="back-to-mode-btn-2" class="back-btn">← Back</button>
       <p class="disclaimer">
         This is an unofficial fan project and is <strong>not affiliated</strong> with the original creators.<br />
         Inspired by Deep Sea Adventure, an awesome board game by <strong>Oink Games</strong> — if you enjoy it, please

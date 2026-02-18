@@ -1,0 +1,13 @@
+{
+  "name": "dive-laugh-love",
+  "version": "2.0.0",
+  "description": "Dive, Laugh, Love — a lightweight browser board game inspired by Deep Sea Adventure",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/domain.rules.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

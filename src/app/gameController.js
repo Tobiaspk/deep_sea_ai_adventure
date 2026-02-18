@@ -1,6 +1,10 @@
 /**
  * Game controller — orchestrates user actions and state transitions.
  * Bridges domain logic with the UI layer.
+ *
+ * Supports two modes:
+ *  - LOCAL:  all logic runs in-browser (original behaviour)
+ *  - ONLINE: actions are sent to the server via WebSocket
  */
 
 import { createGameState } from '../domain/gameState.js';
@@ -24,42 +28,70 @@ import {
   sfxTridentAttack, sfxTridentKill, sfxTridentBackfire, sfxTridentMiss,
   sfxOxygenLow, sfxRoundEnd, sfxGameOver, sfxClick, sfxDepthCharge, sfxAnchor,
 } from '../infra/sounds.js';
+import { sendAction } from '../infra/network.js';
 
 let state = null;
 let onStateChange = null; // callback for UI re-render
+let mode = 'local';       // 'local' | 'online'
+let myPlayerId = null;    // assigned by server in online mode
 
 /* ── public API ───────────────────────────────────────────── */
 
+export const setMode = (m) => { mode = m; };
+export const getMode = () => mode;
+export const setMyPlayerId = (id) => { myPlayerId = id; };
+export const getMyPlayerId = () => myPlayerId;
+export const isMyTurn = () => mode === 'local' || (state && state.currentPlayerIndex === myPlayerId);
+
 export const startGame = (playerNames, renderCallback) => {
+  mode = 'local';
   state = createGameState(playerNames);
   onStateChange = renderCallback;
   state.log.push(`=== Round 1 begins. Oxygen: ${state.oxygen} ===`);
   notify();
 };
 
+/** Receive authoritative state from the server (online mode). */
+export const receiveState = (serverState, playerId, event, renderCallback) => {
+  state = serverState;
+  myPlayerId = playerId;
+  if (renderCallback) onStateChange = renderCallback;
+
+  // Play sound effects based on the event
+  playSoundsForEvent(event);
+
+  // Attach event data for overlays
+  if (event.lastKill)      state.lastKill = event.lastKill;
+  if (event.lastAnchor)    state.lastAnchor = event.lastAnchor;
+  if (event.lastExplosion) state.lastExplosion = event.lastExplosion;
+  if (event.lastEvent)     state.lastEvent = event.lastEvent;
+
+  notify();
+};
+
+export const setRenderCallback = (cb) => { onStateChange = cb; };
+
 export const getState = () => state;
 
 /** Player chooses direction: 'down' or 'up'. */
 export const actionChooseDirection = (direction) => {
+  if (mode === 'online') {
+    sfxClick();
+    sendAction('choose-direction', { direction });
+    return;
+  }
   if (!state || state.turnPhase !== 'direction') return;
   const player = state.players[state.currentPlayerIndex];
-
-  // Players on the submarine must go down
   if (player.position === -1) direction = 'down';
 
   sfxClick();
   chooseDirection(state, direction);
-
-  // Consume oxygen before rolling
   applyOxygenCost(state);
 
-  // Oxygen warning
   if (state.oxygen > 0 && state.oxygen <= 5) sfxOxygenLow();
 
-  // Check if oxygen ran out
   if (state.oxygen <= 0) {
     sfxRoundEnd();
-    // Collect who drowned
     const drowned = state.players.filter(p => p.position >= 0 && !p.dead).map(p => p.name);
     state.turnPhase = 'endTurn';
     endTurn(state);
@@ -74,12 +106,12 @@ export const actionChooseDirection = (direction) => {
     notify();
     return;
   }
-
   notify();
 };
 
 /** Player buys an Anchor Boost while on the submarine. */
 export const actionBuyAnchor = () => {
+  if (mode === 'online') { sfxAnchor(); sendAction('buy-anchor'); return; }
   if (!state || state.turnPhase !== 'direction') return;
   const player = state.players[state.currentPlayerIndex];
   if (!canBuyAnchor(player)) return;
@@ -91,13 +123,13 @@ export const actionBuyAnchor = () => {
 
 /** Roll dice and move the current player. */
 export const actionRoll = () => {
+  if (mode === 'online') { sfxDiceRoll(); sendAction('roll'); return; }
   if (!state || state.turnPhase !== 'roll') return;
   sfxDiceRoll();
   const { total } = rollDice();
   const player = state.players[state.currentPlayerIndex];
   applyMovement(state, total);
 
-  // If player returned to sub, skip pickup and end turn
   if (state.turnPhase === 'endTurn') {
     sfxReturnToSub();
     const scoredCount = player.carried.length;
@@ -105,13 +137,14 @@ export const actionRoll = () => {
     state.lastEvent = { type: 'returnSub', player: player.name, detail: `Secured ${scoredCount} chip(s)!` };
     if (state.gameOver) { sfxGameOver(); state.lastEvent = { type: 'gameOver', player: state.winner }; }
   } else {
-    setTimeout(() => sfxMove(), 250); // after dice rattle
+    setTimeout(() => sfxMove(), 250);
   }
   notify();
 };
 
 /** Player picks up a chip at their position. */
 export const actionPickUp = () => {
+  if (mode === 'online') { sfxPickup(); sendAction('pick-up'); return; }
   if (!state || state.turnPhase !== 'pickup') return;
   const player = state.players[state.currentPlayerIndex];
   if (!canPickUp(player, state.chips)) return;
@@ -128,6 +161,7 @@ export const actionPickUp = () => {
 
 /** Player drops a chip at their position (swap). */
 export const actionDrop = () => {
+  if (mode === 'online') { sfxDrop(); sendAction('drop'); return; }
   if (!state || state.turnPhase !== 'pickup') return;
   const player = state.players[state.currentPlayerIndex];
   if (!canDrop(player, state.chips)) return;
@@ -141,6 +175,7 @@ export const actionDrop = () => {
 
 /** Player skips pickup/drop. */
 export const actionSkip = () => {
+  if (mode === 'online') { sfxClick(); sendAction('skip'); return; }
   if (!state || state.turnPhase !== 'pickup') return;
   sfxClick();
   skipPickup(state);
@@ -151,13 +186,13 @@ export const actionSkip = () => {
 
 /** Player uses Poseidon's Trident on an adjacent target. */
 export const actionTrident = (targetId) => {
+  if (mode === 'online') { sfxTridentAttack(); sendAction('trident', { targetId }); return; }
   if (!state || state.turnPhase !== 'pickup') return;
   sfxTridentAttack();
   const target = state.players.find((p) => p.id === targetId);
   const attacker = state.players[state.currentPlayerIndex];
   applyTridentAttack(state, targetId);
 
-  // Record kill for animation
   if (target && target.dead) {
     state.lastKill = { victim: target.name, killer: attacker.name };
   } else if (attacker.dead) {
@@ -166,7 +201,6 @@ export const actionTrident = (targetId) => {
     state.lastKill = null;
   }
 
-  // Play outcome sound after initial stab
   setTimeout(() => {
     if (target && target.dead) sfxTridentKill();
     else if (attacker.dead) sfxTridentBackfire();
@@ -179,6 +213,7 @@ export const actionTrident = (targetId) => {
 
 /** Player detonates a Depth Charge, destroying the chip on their space. */
 export const actionDepthCharge = () => {
+  if (mode === 'online') { sfxDepthCharge(); sendAction('depth-charge'); return; }
   if (!state || state.turnPhase !== 'pickup') return;
   const player = state.players[state.currentPlayerIndex];
   if (!canDepthCharge(player, state.chips, state.oxygen)) return;
@@ -202,7 +237,6 @@ export const getAvailableActions = () => {
   switch (state.turnPhase) {
     case 'direction':
       if (player.position === -1) {
-        // On submarine — can buy anchor before diving
         if (canBuyAnchor(player) && !player.anchorActive) {
           actions.push({ id: 'buy-anchor', label: `⚓ Buy Anchor (cost: 3 pts)`, action: () => actionBuyAnchor(), anchor: true });
         }
@@ -223,11 +257,9 @@ export const getAvailableActions = () => {
       if (canDrop(player, state.chips) && player.carried.length > 0) {
         actions.push({ id: 'drop', label: '⬇ Drop Chip', action: () => actionDrop() });
       }
-      // Depth Charge — destroy chip on current space
       if (canDepthCharge(player, state.chips, state.oxygen)) {
         actions.push({ id: 'depth-charge', label: `💣 Depth Charge (${player.depthCharges} left)`, action: () => actionDepthCharge(), depthCharge: true });
       }
-      // Poseidon's Trident — attack adjacent players
       const targets = adjacentTargets(player, state.players);
       targets.forEach((t) => {
         actions.push({ id: `trident-${t.id}`, label: `🔱 Attack ${t.name}`, action: () => actionTrident(t.id), trident: true });
@@ -245,4 +277,34 @@ export const getAvailableActions = () => {
 
 const notify = () => {
   if (onStateChange) onStateChange(state);
+};
+
+/** Play sound effects based on server event in online mode. */
+const playSoundsForEvent = (event) => {
+  if (!event) return;
+  if (event.diceTotal)     sfxDiceRoll();
+  if (event.returnedToSub) setTimeout(() => sfxReturnToSub(), 250);
+  if (event.oxygenLow)     sfxOxygenLow();
+  if (event.oxygenDepleted) sfxRoundEnd();
+  if (event.lastAnchor)    sfxAnchor();
+  if (event.lastExplosion) sfxDepthCharge();
+  if (event.lastKill) {
+    sfxTridentAttack();
+    setTimeout(() => {
+      if (event.lastKill.backfire) sfxTridentBackfire();
+      else sfxTridentKill();
+    }, 300);
+  }
+  if (event.tridentMiss) {
+    sfxTridentAttack();
+    setTimeout(() => sfxTridentMiss(), 300);
+  }
+  if (event.lastEvent) {
+    const t = event.lastEvent.type;
+    if (t === 'pickup') sfxPickup();
+    if (t === 'drop') sfxDrop();
+    if (t === 'gameOver') sfxGameOver();
+    if (t === 'drown' || t === 'roundEnd') sfxRoundEnd();
+  }
+  if (event.diceTotal && !event.returnedToSub) setTimeout(() => sfxMove(), 250);
 };
