@@ -2,112 +2,136 @@
 
 ## Purpose
 
-This document defines the implementation blueprint for a **very lightweight, simple HTML-based version** of **Dive, Laugh, Love** (inspired by Deep Sea Adventure).
+This document defines the implementation blueprint for **Dive, Laugh, Love** (inspired by Deep Sea Adventure) — a lightweight HTML-based board game with local **and** online multiplayer.
 
 ---
 
 ## Core Principles
 
-1. Keep the game small, readable, and easy to run locally.
+1. Keep the game small, readable, and easy to run.
 2. Prefer plain web technologies over frameworks.
-3. Avoid premature complexity (no backend, no build pipeline unless absolutely needed).
+3. Avoid premature complexity (no build pipeline, no heavy dependencies).
 4. Keep game rules deterministic and testable.
 5. Separate game logic from UI rendering.
+6. Server is authoritative in online mode — clients never run game logic.
 
 ---
 
 ## Technology Choices
 
-Use the following baseline stack:
+### Client (browser)
 
 - **HTML5** for page structure.
-- **CSS3** for styling.
+- **CSS3** for styling and animations (`@keyframes`).
 - **Vanilla JavaScript (ES Modules)** for logic.
+- **Web Audio API** for synthesized sound effects (no audio files).
+
+### Server
+
+- **Node.js** (v25+) — runtime for the WebSocket game server.
+- **`ws`** (npm) — lightweight WebSocket library.
+- The server also serves static files so no separate HTTP server is needed.
+
+### Deployment / Tunneling
+
+- **ngrok** — optional public tunnel for remote players outside the LAN.
 
 Do not use React/Vue/Angular or heavy runtime dependencies.
-
-Optional (only if later needed):
-
-- Lightweight dev server (e.g., `python -m http.server` or `npx serve`).
-- Small test tooling for game logic only.
 
 ---
 
 ## Scope and Constraints
 
-- Target: desktop browser first; responsive enough for tablet if simple.
-- No online multiplayer in initial versions.
+- Target: desktop browser first; responsive enough for tablet.
+- Online multiplayer via WebSocket room codes (2–6 players).
 - No account/authentication.
-- No backend services.
-- No database.
-- No animation-heavy or GPU-heavy effects.
+- No database or backend persistence.
+- No GPU-heavy effects.
 - Keep asset count low and file sizes small.
 
 ---
 
 ## Architecture (High-Level)
 
-Follow a simple layered structure:
+```
+┌─────────────┐        WebSocket         ┌──────────────────┐
+│  Browser(s)  │  ◄──────────────────►   │   Node.js Server  │
+│  UI + Client │     state / actions     │  Authoritative    │
+│  Network.js  │                         │  Game Logic       │
+└─────────────┘                          └──────────────────┘
+```
 
-1. **Domain/Game Rules Layer**
+### Layers
+
+1. **Domain/Game Rules Layer** (`src/domain/`)
    - Pure logic: players, turns, oxygen, treasure track, movement, pickup/drop, round transitions, scoring.
-   - No DOM access.
-   - Deterministic state transitions.
+   - Custom mechanics: Poseidon's Trident, Depth Charge, Anchor Boost.
+   - No DOM access. Deterministic state transitions.
+   - Used directly in local mode; inlined/adapted in `server.js` for online mode.
 
-2. **Application/Controller Layer**
-   - Orchestrates flow: start game, process current player action, advance turn/round, detect end game.
-   - Calls domain functions and updates state.
+2. **Application/Controller Layer** (`src/app/`)
+   - Dual-mode controller: **local** (runs domain logic directly) or **online** (sends actions via WebSocket, receives authoritative state).
+   - Exposes unified action API to the UI regardless of mode.
 
-3. **Presentation/UI Layer**
+3. **Presentation/UI Layer** (`src/ui/`)
    - Reads state and renders board, tokens, oxygen, player inventories, and controls.
-   - Sends user actions (move, pick, return, etc.) to controller.
+   - Sends user actions to controller.
    - No game-rule decisions in UI code.
+   - In online mode, gates controls to the current player's turn.
 
-4. **Infrastructure Layer (Lightweight)**
-   - Small utilities: RNG (if needed), constants, local storage adapter for optional save/load.
-   - Static assets (icons/sprites).
+4. **Infrastructure Layer** (`src/infra/`)
+   - `constants.js` — game constants.
+   - `rng.js` — dice roller (two d3).
+   - `storage.js` — localStorage adapter for optional save/load.
+   - `sounds.js` — 16 synthesized sound effects via Web Audio API.
+   - `network.js` — WebSocket client wrapper (connect, create/join room, send action).
+
+5. **Server Layer** (`server.js`)
+   - Authoritative WebSocket server with room management (4-letter codes).
+   - In-memory `Map` of rooms; each room holds full game state.
+   - Inlines domain logic (adapted from `src/domain/`) so the server is self-contained.
+   - Serves static files (HTML/CSS/JS/assets) — replaces `python -m http.server`.
 
 ---
 
-## Suggested Project Structure
+## Project Structure
 
 ```text
 /
-  index.html
+  index.html              # Entry HTML — mode select, lobby, game
+  server.js               # Node.js WebSocket + static file server
+  package.json            # npm metadata + ws dependency
+  start.sh                # Convenience script (server + optional ngrok)
+  .gitignore
   /src
     /domain
-      gameState.js
-      rules.js
-      turnEngine.js
-      scoring.js
+      gameState.js         # State factory
+      rules.js             # Pure validation functions
+      turnEngine.js        # All game-state mutations
+      scoring.js           # Score utilities
     /app
-      gameController.js
-      actions.js
+      gameController.js    # Dual-mode controller (local / online)
     /ui
-      renderBoard.js
-      renderHud.js
-      bindControls.js
+      renderBoard.js       # Board rendering
+      renderHud.js         # Oxygen / player HUD
+      bindControls.js      # Contextual action buttons + turn gating
     /infra
-      constants.js
-      rng.js
-      storage.js
-    main.js
+      constants.js         # Game constants
+      rng.js               # Dice
+      sounds.js            # Web Audio synthesized SFX (16 sounds)
+      storage.js           # localStorage adapter
+      network.js           # WebSocket client wrapper
+    main.js                # Bootstrap, lobby flow, render loop
   /styles
-    base.css
-    board.css
-    ui.css
+    base.css               # Reset, body, typography
+    board.css              # Board tiles, diver tokens
+    ui.css                 # HUD, controls, lobby, mode select, animations
   /assets
     /img
     /icons
   /tests
-    domain.rules.test.js
-  README.md
+    domain.rules.test.js   # 25+ deterministic rule tests
 ```
-
-Notes:
-
-- Keep file count minimal; merge files if architecture feels over-split.
-- `domain/` must remain framework-agnostic and DOM-free.
 
 ---
 
@@ -115,24 +139,25 @@ Notes:
 
 ### JavaScript
 
-- Use ES modules (`import`/`export`).
+- Use ES modules (`import`/`export`) on the client.
+- `server.js` uses CommonJS-compatible patterns (no bundler).
 - Prefer pure functions in `domain/`.
 - Prefer `const` by default, `let` only when reassignment is needed.
 - Use descriptive names; avoid one-letter variables.
 - Keep functions short and single-purpose.
-- JSDoc is optional; use only where clarity is needed.
 
 ### State Management
 
 - Maintain a single canonical game state object.
-- All state changes should happen via explicit action handlers/reducers.
+- In local mode, state lives in the controller.
+- In online mode, the server holds authoritative state and broadcasts it to all clients after every action.
 - Avoid mutating shared state directly in UI code.
 
 ### Styling
 
 - Keep CSS simple and modular by area (`base`, `board`, `ui`).
 - Prefer classes over inline styles.
-- Keep visual style lightweight and readable.
+- Animations use pure CSS `@keyframes` (kill overlay, explosion, anchor sinking, event banners).
 
 ### Files and Naming
 
@@ -144,29 +169,30 @@ Notes:
 
 ## Rule Implementation Guidance
 
-- Use the official rulebook as the source of truth for mechanics.
-- If ambiguities appear, document assumptions in `README.md` before coding.
-- Keep rule constants centralized (e.g., player count ranges, oxygen behavior).
+- Use the official rulebook as the source of truth for core mechanics.
+- Custom mechanics (Trident, Depth Charge, Anchor Boost) are documented in-code and in README.
+- Keep rule constants centralized in `constants.js`.
 - Add small deterministic tests for edge cases in turn and oxygen resolution.
 
 ---
 
-## UI/UX Guidance (Lightweight)
+## UI/UX Guidance
 
 - Prioritize clarity over visual effects.
 - Show current player and legal actions clearly.
 - Always display oxygen, turn order, and each player's carried treasure.
 - Keep interactions to simple buttons and minimal board click handling.
-- Support keyboard shortcuts only if trivial.
+- In online mode, show "Waiting for [name]…" when it's not the local player's turn.
+- Mode selection (Local / Online) is the first screen; lobby flow for online games.
 
 ---
 
 ## Performance and Simplicity Targets
 
 - Initial load should be fast on a typical laptop browser.
-- No heavy libraries.
+- Only runtime dependency: `ws` (server-side only, ~60 KB).
 - Minimal DOM churn: rerender only changed sections when practical.
-- Keep total JavaScript footprint small and understandable.
+- Keep total client JavaScript footprint small and understandable.
 
 ---
 
@@ -177,18 +203,18 @@ Notes:
   - move validation,
   - oxygen consumption,
   - treasure pickup/drop constraints,
-  - round/game end scoring.
-- UI testing is optional for early versions.
+  - round/game end scoring,
+  - custom mechanic edge cases.
+- UI and network testing are optional for early versions.
 
 ---
 
-## Non-Goals (for initial implementation)
+## Non-Goals
 
-- Networked multiplayer.
 - AI opponents with advanced strategy.
-- Complex animation system.
 - Mobile-native packaging.
-- Backend persistence.
+- Backend persistence / database.
+- Account/authentication system.
 
 ---
 
@@ -199,37 +225,63 @@ Notes:
 3. ✅ Player actions and rule enforcement.
 4. ✅ Scoring and game-end flow.
 5. ✅ UI polish and lightweight usability improvements.
+6. ✅ Custom mechanics (Poseidon's Trident, Depth Charge, Anchor Boost).
+7. ✅ Sound effects (Web Audio API) and CSS animations.
+8. ✅ Rename to "Dive, Laugh, Love" + v1.0.0 release.
+9. ✅ Online multiplayer (WebSocket server, room codes, lobby UI).
+10. ✅ Deployment tooling (`start.sh`, ngrok tunneling).
 
 ---
 
 ## Implementation Status
 
-**All five phases are implemented.** The game is fully playable in a browser.
+**All ten phases are implemented.** The game supports both local hot-seat and online multiplayer.
 
 ### What was built
 
 | Layer | Files | Description |
 |-------|-------|-------------|
-| Infra | `constants.js`, `rng.js`, `storage.js` | Game constants, dice roller, localStorage adapter |
-| Domain | `gameState.js`, `rules.js`, `turnEngine.js`, `scoring.js` | Pure game logic — state factory, movement, oxygen, pickup/drop, round/game end, scoring |
-| App | `gameController.js` | Orchestrates user actions ↔ domain transitions, exposes action API |
-| UI | `renderBoard.js`, `renderHud.js`, `bindControls.js` | Board rendering, oxygen/player HUD, action buttons |
-| Entry | `main.js`, `index.html` | Bootstrap, setup form, render loop |
-| Style | `base.css`, `board.css`, `ui.css` | Dark-ocean theme, responsive flexbox layout |
-| Tests | `domain.rules.test.js` | 15+ deterministic rule tests (oxygen, movement, pickup, round end, scoring) |
+| Infra | `constants.js`, `rng.js`, `storage.js`, `sounds.js`, `network.js` | Game constants, dice, localStorage, 16 synthesized SFX, WebSocket client |
+| Domain | `gameState.js`, `rules.js`, `turnEngine.js`, `scoring.js` | Pure game logic — state factory, movement, oxygen, pickup/drop, Trident/Depth Charge/Anchor, round/game end, scoring |
+| App | `gameController.js` | Dual-mode controller (local ↔ online), unified action API |
+| UI | `renderBoard.js`, `renderHud.js`, `bindControls.js` | Board rendering, HUD, contextual action buttons with turn gating |
+| Entry | `main.js`, `index.html` | Mode select, lobby flow, render loop |
+| Server | `server.js` | Authoritative WebSocket server, room management, static file serving |
+| Style | `base.css`, `board.css`, `ui.css` | Dark-ocean theme, responsive layout, lobby/mode-select UI, CSS animations |
+| Tests | `domain.rules.test.js` | 25+ deterministic rule tests |
+| Scripts | `start.sh` | One-command server start with optional ngrok tunnel |
 
 ### Running the game
 
 ```bash
-python3 -m http.server 8080   # or: npx serve .
-# Open http://localhost:8080
+# Install dependencies (first time only)
+npm install
+
+# Start the server (default port 8080)
+./start.sh
+
+# Or with a public ngrok tunnel for remote players
+./start.sh --ngrok
+
+# Or specify a custom port
+./start.sh 3000
+./start.sh 3000 --ngrok
 ```
+
+Open the URL printed in the terminal.
 
 ### Running tests
 
 ```bash
 node tests/domain.rules.test.js
 ```
+
+### Multiplayer flow
+
+1. One player clicks **Online** → **Create Room** → shares the 4-letter room code.
+2. Other players click **Online** → **Join Room** → enter the code.
+3. Host clicks **Start Game** when everyone has joined.
+4. The server runs all game logic; clients send actions and receive state updates.
 
 ### Rule assumptions
 
@@ -239,3 +291,6 @@ node tests/domain.rules.test.js
 - When oxygen reaches 0, all divers still underwater lose their carried chips.
 - Board compacts (gaps close) between rounds.
 - After 3 rounds the player with the highest total scored-chip value wins.
+- **Poseidon's Trident**: attack another diver to steal a treasure chip.
+- **Depth Charge**: place an explosive on a tile to destroy it and its treasure.
+- **Anchor Boost**: spend points to negate carried-chip movement penalty for one turn.
