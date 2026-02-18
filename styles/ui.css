@@ -38,7 +38,8 @@
 
 /* ── Online lobby ─────────────────────────────────────────── */
 
-#lobby {
+#lobby,
+#coop-lobby {
   background: #132840;
   border: 1px solid #2a5070;
   border-radius: 10px;
@@ -123,7 +124,8 @@
 }
 
 .player-input { margin: 0.4rem 0; }
-.player-name {
+.player-name,
+.coop-player-name {
   background: #1a3050;
   border: 1px solid #3a6a90;
   border-radius: 4px;
@@ -133,21 +135,25 @@
   width: 140px;
 }
 
-#add-player-btn {
+#add-player-btn,
+#coop-add-player-btn {
   background: #2a5070;
   color: #cde;
   margin-top: 0.5rem;
 }
-#add-player-btn:hover { background: #3a6a90; }
+#add-player-btn:hover,
+#coop-add-player-btn:hover { background: #3a6a90; }
 
-#start-btn {
+#start-btn,
+#coop-start-btn {
   background: #27ae60;
   color: #fff;
   margin-top: 0.8rem;
   padding: 0.6rem 2rem;
   font-size: 1rem;
 }
-#start-btn:hover { background: #2ecc71; }
+#start-btn:hover,
+#coop-start-btn:hover { background: #2ecc71; }
 
 .disclaimer {
   margin-top: 1rem;
@@ -254,6 +260,12 @@
   background: #c0392b;
 }
 .action-btn.depth-charge:hover { background: #e74c3c; }
+
+/* ── Bomb button (co-op) ─────────────────────────────────── */
+.action-btn.bomb {
+  background: #d35400;
+}
+.action-btn.bomb:hover { background: #e67e22; }
 
 /* ── Message box ──────────────────────────────────────────── */
 
@@ -964,4 +976,145 @@
 
 #game-log {
   margin-top: 0.2rem;
+}
+
+/* ── Co-op setup screen ───────────────────────────────────── */
+
+#coop-setup {
+  background: #132840;
+  border: 1px solid #2a5070;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin: 1rem auto;
+  max-width: 520px;
+  text-align: center;
+}
+
+.coop-btn {
+  background: linear-gradient(135deg, #1a4030, #2a6050) !important;
+  border-color: #3a8070 !important;
+}
+.coop-btn:hover {
+  background: linear-gradient(135deg, #2a6050, #3a907a) !important;
+}
+
+/* ── Mission cards ────────────────────────────────────────── */
+
+.mission-select {
+  margin: 1.2rem 0;
+}
+.mission-select h3 {
+  color: #7ab8d8;
+  margin-bottom: 0.8rem;
+}
+
+.mission-card {
+  display: inline-block;
+  vertical-align: top;
+  width: 200px;
+  background: #1a3050;
+  border: 2px solid #2a5070;
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 0.4rem;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, background 0.2s;
+  text-align: center;
+}
+.mission-card:hover {
+  border-color: #5a9aba;
+  transform: translateY(-2px);
+}
+.mission-card.selected {
+  border-color: #f1c40f;
+  background: #1a3a5a;
+  box-shadow: 0 0 12px rgba(241, 196, 15, 0.25);
+}
+.mission-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.4rem;
+}
+.mission-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #e0e8f0;
+  margin-bottom: 0.3rem;
+}
+.mission-desc {
+  font-size: 0.78rem;
+  color: #8ab0c8;
+  line-height: 1.3;
+}
+
+/* ── Co-op HUD panel ──────────────────────────────────────── */
+
+.coop-status-panel {
+  background: linear-gradient(135deg, #1a3a3a, #1a3050);
+  border: 1px solid #2a7060;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin: 0.5rem 0;
+  text-align: center;
+}
+
+.coop-mission-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #7ae0c8;
+  margin-bottom: 0.3rem;
+}
+
+.coop-score-row {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  color: #c0d8e0;
+  margin-bottom: 0.3rem;
+}
+
+.coop-bar-track {
+  background: #0d1a2a;
+  border-radius: 4px;
+  height: 10px;
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+
+.coop-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.panel-bombs {
+  font-size: 0.8rem;
+  color: #e67e22;
+  font-weight: 600;
+}
+
+/* ── Co-op game-over results ──────────────────────────────── */
+
+.coop-win {
+  color: #2ecc71;
+}
+.coop-lose {
+  color: #e74c3c;
+}
+
+/* ── Monster chip ─────────────────────────────────────────── */
+
+.chip.monster-chip {
+  background: radial-gradient(circle, #c0392b 0%, #7b241c 100%);
+  color: #fff;
+  font-size: 1.1rem;
+  border: 2px solid #e74c3c;
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
+  animation: monster-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes monster-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(231, 76, 60, 0.5); }
+  50%      { box-shadow: 0 0 16px rgba(231, 76, 60, 0.8); }
 }

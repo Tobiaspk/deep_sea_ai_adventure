@@ -66,6 +66,7 @@ const send = (msg) => {
 };
 
 export const createRoom = (name) => send({ type: 'create', name });
+export const createCoopRoom = (name, mission) => send({ type: 'create', name, coop: true, mission });
 export const joinRoom = (code, name) => send({ type: 'join', code, name });
 export const startOnlineGame = () => send({ type: 'start' });
 export const restartOnlineGame = () => send({ type: 'restart' });

@@ -3,19 +3,22 @@
  * Wires up mode selection, local setup, online lobby, and game rendering.
  */
 
-import { startGame, getState, receiveState, setMode, getMode, isMyTurn, setRenderCallback } from './app/gameController.js';
+import { startGame, startCoopGame, getState, receiveState, setMode, getMode, isMyTurn, setRenderCallback } from './app/gameController.js';
 import { renderBoard } from './ui/renderBoard.js';
 import { renderHud, renderGameLog } from './ui/renderHud.js';
 import { bindControls } from './ui/bindControls.js';
-import { connect, createRoom, joinRoom, startOnlineGame, restartOnlineGame, disconnect } from './infra/network.js';
+import { connect, createRoom, createCoopRoom, joinRoom, startOnlineGame, restartOnlineGame, disconnect } from './infra/network.js';
 
 const $board    = document.getElementById('board');
 const $hud      = document.getElementById('hud');
 const $controls = document.getElementById('controls');
 const $gameLog  = document.getElementById('game-log');
 const $setup    = document.getElementById('setup');
+const $coopSetup = document.getElementById('coop-setup');
 const $modeSelect = document.getElementById('mode-select');
+const $modeTypeSelect = document.getElementById('mode-type-select');
 const $lobby    = document.getElementById('lobby');
+const $coopLobby = document.getElementById('coop-lobby');
 
 /* ── Number popup animation ───────────────────────────────── */
 
@@ -192,6 +195,9 @@ const EVENT_CONFIG = {
   drown:    { emoji: '🫧', title: 'DROWNED!',         color: '#3498db', duration: 3000 },
   roundEnd: { emoji: '🔔', title: 'NEW ROUND',        color: '#e67e22', duration: 2500 },
   gameOver: { emoji: '🏆', title: 'GAME OVER!',       color: '#f1c40f', duration: 4000 },
+  coopWin:  { emoji: '🎉', title: 'MISSION COMPLETE!', color: '#2ecc71', duration: 5000 },
+  coopLose: { emoji: '💀', title: 'MISSION FAILED',   color: '#e74c3c', duration: 5000 },
+  'bomb-buy':{ emoji: '💣', title: 'BOMB PURCHASED!', color: '#e67e22', duration: 2000 },
 };
 
 const showEventOverlay = ({ type, player, detail }) => {
@@ -216,8 +222,11 @@ const showEventOverlay = ({ type, player, detail }) => {
 
 const hideAll = () => {
   $modeSelect.style.display = 'none';
+  $modeTypeSelect.style.display = 'none';
   $setup.style.display = 'none';
+  $coopSetup.style.display = 'none';
   $lobby.style.display = 'none';
+  $coopLobby.style.display = 'none';
   $board.innerHTML = '';
   $hud.innerHTML = '';
   $controls.innerHTML = '';
@@ -242,19 +251,59 @@ const showLobby = () => {
   document.getElementById('lobby-error').textContent = '';
 };
 
-/* ── mode selection ───────────────────────────────────────── */
+const showCoopLobby = () => {
+  hideAll();
+  $coopLobby.style.display = '';
+  document.getElementById('coop-lobby-connect').style.display = '';
+  document.getElementById('coop-lobby-waiting').style.display = 'none';
+  document.getElementById('coop-lobby-error').textContent = '';
+};
+
+/* ── mode selection (two-step flow) ────────────────────────── */
+
+let selectedTransport = 'local'; // 'local' | 'online'
 
 document.getElementById('mode-local-btn').addEventListener('click', () => {
-  setMode('local');
-  showSetup();
+  selectedTransport = 'local';
+  hideAll();
+  $modeTypeSelect.style.display = '';
 });
 
 document.getElementById('mode-online-btn').addEventListener('click', () => {
-  showLobby();
+  selectedTransport = 'online';
+  hideAll();
+  $modeTypeSelect.style.display = '';
 });
 
+document.getElementById('type-versus-btn').addEventListener('click', () => {
+  if (selectedTransport === 'local') {
+    setMode('local');
+    showSetup();
+  } else {
+    showLobby();
+  }
+});
+
+document.getElementById('type-coop-btn').addEventListener('click', () => {
+  if (selectedTransport === 'local') {
+    setMode('local');
+    hideAll();
+    $coopSetup.style.display = '';
+  } else {
+    showCoopLobby();
+  }
+});
+
+document.getElementById('back-to-step1-btn').addEventListener('click', showModeSelect);
+
 document.getElementById('back-to-mode-btn').addEventListener('click', showModeSelect);
+document.getElementById('back-to-mode-btn-coop').addEventListener('click', showModeSelect);
 document.getElementById('back-to-mode-btn-2').addEventListener('click', () => {
+  disconnect();
+  showModeSelect();
+});
+
+document.getElementById('back-to-mode-btn-3').addEventListener('click', () => {
   disconnect();
   showModeSelect();
 });
@@ -291,6 +340,48 @@ const addPlayerInput = () => {
 };
 
 $addPlayer.addEventListener('click', addPlayerInput);
+
+/* ── co-op setup ──────────────────────────────────────────── */
+
+let coopMission = 'treasure';
+let coopPlayerCount = 2;
+
+// Mission card selection
+document.querySelectorAll('#coop-setup .mission-card').forEach((card) => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('#coop-setup .mission-card').forEach((c) => c.classList.remove('selected'));
+    card.classList.add('selected');
+    coopMission = card.dataset.mission;
+  });
+});
+
+// Add player button
+const $coopPlayerList = document.getElementById('coop-player-list');
+document.getElementById('coop-add-player-btn').addEventListener('click', () => {
+  if (coopPlayerCount >= 6) return;
+  coopPlayerCount++;
+  const div = document.createElement('div');
+  div.className = 'player-input';
+  div.innerHTML = `<label>Player ${coopPlayerCount}: <input type="text" class="coop-player-name" placeholder="Name" maxlength="12" /></label>`;
+  $coopPlayerList.appendChild(div);
+  if (coopPlayerCount >= 6) document.getElementById('coop-add-player-btn').disabled = true;
+});
+
+// Start co-op mission
+document.getElementById('coop-start-btn').addEventListener('click', () => {
+  const nameInputs = document.querySelectorAll('.coop-player-name');
+  const names = Array.from(nameInputs)
+    .map((el) => el.value.trim())
+    .filter((n) => n.length > 0);
+
+  if (names.length < 2) {
+    alert('Enter at least 2 player names.');
+    return;
+  }
+
+  hideAll();
+  startCoopGame(names, coopMission, render);
+});
 
 /* ── online lobby ─────────────────────────────────────────── */
 
@@ -365,5 +456,95 @@ const showLobbyWaiting = ({ code, names, you }) => {
 };
 
 document.getElementById('start-online-btn').addEventListener('click', () => {
+  startOnlineGame();
+});
+
+/* ── online co-op lobby ───────────────────────────────────── */
+
+let onlineCoopMission = 'treasure';
+let isCoopHost = false;
+
+// Mission card selection (online co-op)
+document.querySelectorAll('#coop-lobby .mission-card').forEach((card) => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('#coop-lobby .mission-card').forEach((c) => c.classList.remove('selected'));
+    card.classList.add('selected');
+    onlineCoopMission = card.dataset.mission;
+  });
+});
+
+const $coopLobbyError = document.getElementById('coop-lobby-error');
+const showCoopError = (msg) => { $coopLobbyError.textContent = msg; setTimeout(() => { $coopLobbyError.textContent = ''; }, 4000); };
+
+document.getElementById('coop-create-room-btn').addEventListener('click', async () => {
+  const name = document.getElementById('coop-create-name').value.trim();
+  if (!name) { showCoopError('Enter your name.'); return; }
+
+  try {
+    await connect({
+      onState:      (state, playerId, event) => { hideAll(); receiveState(state, playerId, event, render); },
+      onLobby:      (msg) => showCoopLobbyWaiting(msg),
+      onError:      (msg) => showCoopError(msg),
+      onCreated:    () => {},
+      onDisconnect: (n) => showCoopError(`${n} disconnected.`),
+      onClose:      () => showCoopError('Connection lost.'),
+    });
+    isCoopHost = true;
+    createCoopRoom(name, onlineCoopMission);
+  } catch {
+    showCoopError('Could not connect to server.');
+  }
+});
+
+document.getElementById('coop-join-room-btn').addEventListener('click', async () => {
+  const name = document.getElementById('coop-join-name').value.trim();
+  const code = document.getElementById('coop-join-code').value.trim().toUpperCase();
+  if (!name) { showCoopError('Enter your name.'); return; }
+  if (!code || code.length !== 4) { showCoopError('Enter a 4-letter room code.'); return; }
+
+  try {
+    await connect({
+      onState:      (state, playerId, event) => { hideAll(); receiveState(state, playerId, event, render); },
+      onLobby:      (msg) => showCoopLobbyWaiting(msg),
+      onError:      (msg) => showCoopError(msg),
+      onCreated:    () => {},
+      onDisconnect: (n) => showCoopError(`${n} disconnected.`),
+      onClose:      () => showCoopError('Connection lost.'),
+    });
+    isCoopHost = false;
+    joinRoom(code, name);
+  } catch {
+    showCoopError('Could not connect to server.');
+  }
+});
+
+const showCoopLobbyWaiting = ({ code, names, you, coop, mission }) => {
+  setMode('online');
+  document.getElementById('coop-lobby-connect').style.display = 'none';
+  const $waiting = document.getElementById('coop-lobby-waiting');
+  $waiting.style.display = '';
+  document.getElementById('coop-room-code-value').textContent = code;
+
+  // Show mission label
+  const missionLabel = mission === 'treasure' ? '💰 Treasure Haul' : '🐙 Monster Hunt';
+  document.getElementById('coop-lobby-mission-label').textContent = `Mission: ${missionLabel}`;
+
+  const $players = document.getElementById('coop-lobby-players');
+  $players.innerHTML = '<h3>Teammates:</h3>' +
+    names.map((n, i) => `<div class="lobby-player">${i + 1}. ${n}${n === you ? ' (you)' : ''}${i === 0 ? ' 👑' : ''}</div>`).join('');
+
+  // Only host sees start button
+  const $startBtn = document.getElementById('coop-start-online-btn');
+  const $waitMsg  = document.getElementById('coop-lobby-wait-msg');
+  if (isCoopHost) {
+    $startBtn.style.display = '';
+    $waitMsg.style.display = 'none';
+  } else {
+    $startBtn.style.display = 'none';
+    $waitMsg.style.display = '';
+  }
+};
+
+document.getElementById('coop-start-online-btn').addEventListener('click', () => {
   startOnlineGame();
 });

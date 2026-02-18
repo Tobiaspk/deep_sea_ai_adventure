@@ -52,6 +52,8 @@ const DEPTH_CHARGES_PER_ROUND = 1;
 const DEPTH_CHARGE_OXYGEN_COST = 3;
 const ANCHOR_COST = 3;
 const ANCHOR_MULTIPLIER = 5;
+const COOP_TREASURE_PER_PLAYER = 30;
+const COOP_BOMB_COST = 20;
 
 /* ═══════════════════════════════════════════════════════════
    Game state factory (mirror of src/domain/gameState.js)
@@ -81,6 +83,45 @@ const createGameState = (playerNames) => {
   };
 };
 
+/* ── Co-op game state ────────────────────────────────────── */
+
+const createMonsterChips = (monsterCount) => {
+  const chips = createChips();
+  const lo = 6;
+  const hi = chips.length - 3;
+  const span = hi - lo;
+  const positions = [];
+  for (let i = 0; i < monsterCount; i++) {
+    const pos = lo + Math.round((span / (monsterCount + 1)) * (i + 1));
+    positions.push(pos);
+  }
+  for (const pos of positions) {
+    chips[pos] = { id: pos, level: 'monster', value: 0, discovered: true, monster: true };
+  }
+  return chips;
+};
+
+const createCoopGameState = (playerNames, mission) => {
+  const players = playerNames.map((name, i) => createPlayer(i, name));
+  const isMonsterMission = mission === 'monsters';
+  const monsterCount = playerNames.length;
+  const chips = isMonsterMission ? createMonsterChips(monsterCount) : createChips();
+  return {
+    round: 1, maxRounds: TOTAL_ROUNDS, oxygen: STARTING_OXYGEN,
+    boardSize: BOARD_SIZE, chips, players,
+    currentPlayerIndex: 0, turnPhase: 'direction', diceResult: null,
+    roundOver: false, gameOver: false, winner: null, log: [],
+    coop: true,
+    mission,
+    coopScore: 0,
+    coopTarget: mission === 'treasure' ? COOP_TREASURE_PER_PLAYER * playerNames.length : null,
+    monstersRemaining: isMonsterMission ? monsterCount : 0,
+    coopWin: false,
+    coopLose: false,
+    bombCost: COOP_BOMB_COST,
+  };
+};
+
 /* ═══════════════════════════════════════════════════════════
    Rule helpers (mirror of src/domain/rules.js)
    ═══════════════════════════════════════════════════════════ */
@@ -89,20 +130,24 @@ const oxygenCost = (player) => player.carried.length;
 const consumeOxygen = (oxygen, player) => Math.max(0, oxygen - oxygenCost(player));
 const isOnSubmarine = (player) => player.position === -1;
 
-const computeDestination = (currentPos, steps, direction, occupiedPositions, boardSize) => {
+const computeDestination = (currentPos, steps, direction, occupiedPositions, boardSize, monsterPositions = null) => {
   let remaining = steps;
   let pos = currentPos;
   if (direction === 'down') {
     while (remaining > 0) {
-      pos += 1;
-      if (pos >= boardSize) { pos = boardSize - 1; break; }
+      const next = pos + 1;
+      if (next >= boardSize) { pos = boardSize - 1; break; }
+      if (monsterPositions && monsterPositions.has(next)) break;
+      pos = next;
       if (occupiedPositions.has(pos)) continue;
       remaining -= 1;
     }
   } else {
     while (remaining > 0) {
-      pos -= 1;
-      if (pos < 0) return -1;
+      const next = pos - 1;
+      if (next < 0) return -1;
+      if (monsterPositions && monsterPositions.has(next)) break;
+      pos = next;
       if (occupiedPositions.has(pos)) continue;
       remaining -= 1;
     }
@@ -132,6 +177,36 @@ const canDepthCharge = (player, chips, oxygen) => {
   return oxygen >= DEPTH_CHARGE_OXYGEN_COST;
 };
 
+const canBuyBomb = (player, coopScore) => {
+  if (player.position !== -1) return false;
+  return coopScore >= COOP_BOMB_COST;
+};
+
+const canUseBomb = (player, chips) => {
+  if (player.position < 0) return false;
+  if (!player.bombs || player.bombs <= 0) return false;
+  const pos = player.position;
+  const ahead = pos + 1 < chips.length && chips[pos + 1] && chips[pos + 1].monster;
+  const behind = pos - 1 >= 0 && chips[pos - 1] && chips[pos - 1].monster;
+  return ahead || behind;
+};
+
+const canPickUpCoop = (player, chips) => {
+  if (player.position < 0) return false;
+  const chip = chips[player.position];
+  if (!chip) return false;
+  if (chip.monster) return false;
+  return true;
+};
+
+const getMonsterPositions = (chips) => {
+  const s = new Set();
+  for (let i = 0; i < chips.length; i++) {
+    if (chips[i] && chips[i].monster) s.add(i);
+  }
+  return s;
+};
+
 const adjacentTargets = (player, players) => {
   if (player.position < 0) return [];
   return players.filter(
@@ -146,8 +221,13 @@ const resolveTridentRoll = () => {
   return { roll, result: 'miss' };
 };
 
-const isRoundOver = (oxygen, players) => {
+const isRoundOver = (oxygen, players, coop = false) => {
   if (oxygen <= 0) return true;
+  if (coop) return false; // co-op requires manual end-round confirmation
+  return players.filter(p => !p.dead).every(p => p.position === -1);
+};
+
+const allPlayersOnSub = (players) => {
   return players.filter(p => !p.dead).every(p => p.position === -1);
 };
 
@@ -206,10 +286,41 @@ const endRound = (state) => {
   const remainingChips = state.chips.filter(c => c !== null);
   state.chips = remainingChips.map((c, i) => ({ ...c, id: i }));
   state.boardSize = state.chips.length;
+
+  // Co-op win/lose checks
+  if (state.coop) {
+    if (state.mission === 'treasure') {
+      if (state.coopScore >= state.coopTarget) {
+        state.gameOver = true; state.coopWin = true; state.turnPhase = 'gameOver';
+        addLog(state, `🎉 MISSION COMPLETE! Team scored ${state.coopScore} / ${state.coopTarget} points!`);
+        return state;
+      }
+    } else if (state.mission === 'monsters') {
+      const monstersLeft = state.chips.filter(c => c && c.monster).length;
+      state.monstersRemaining = monstersLeft;
+      const allHome = state.players.every(p => p.position === -1);
+      if (monstersLeft === 0 && allHome) {
+        state.gameOver = true; state.coopWin = true; state.turnPhase = 'gameOver';
+        addLog(state, `🎉 MISSION COMPLETE! All monsters destroyed and everyone is safe!`);
+        return state;
+      }
+    }
+  }
+
   if (state.round >= state.maxRounds) {
     state.gameOver = true; state.turnPhase = 'gameOver';
-    determineWinner(state);
-    addLog(state, `🏆 Game over! Winner: ${state.winner}!`);
+    if (state.coop) {
+      state.coopLose = true;
+      if (state.mission === 'treasure') {
+        addLog(state, `💀 Mission failed! Team scored ${state.coopScore} / ${state.coopTarget} points.`);
+      } else {
+        const monstersLeft = state.chips.filter(c => c && c.monster).length;
+        addLog(state, `💀 Mission failed! ${monstersLeft} monster(s) remain.`);
+      }
+    } else {
+      determineWinner(state);
+      addLog(state, `🏆 Game over! Winner: ${state.winner}!`);
+    }
     return state;
   }
   state.round += 1; state.oxygen = STARTING_OXYGEN;
@@ -222,7 +333,7 @@ const endRound = (state) => {
 };
 
 const endTurn = (state) => {
-  if (isRoundOver(state.oxygen, state.players)) return endRound(state);
+  if (isRoundOver(state.oxygen, state.players, !!state.coop)) return endRound(state);
   advancePlayer(state);
   state.turnPhase = 'direction';
   return state;
@@ -258,7 +369,9 @@ const handleChooseDirection = (state, { direction }) => {
     state.turnPhase = 'endTurn';
     endTurn(state);
     if (state.gameOver) {
-      event.lastEvent = { type: 'gameOver', player: state.winner };
+      if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+      else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+      else event.lastEvent = { type: 'gameOver', player: state.winner };
     } else if (drowned.length > 0) {
       event.lastEvent = { type: 'drown', player: drowned.join(', '), detail: 'Oxygen depleted!' };
     } else {
@@ -269,24 +382,43 @@ const handleChooseDirection = (state, { direction }) => {
     event.oxygenLow = true;
   }
 
+  // Auto-roll dice immediately after choosing direction
+  if (state.turnPhase === 'roll') {
+    const rollEvent = handleRoll(state);
+    if (rollEvent) Object.assign(event, rollEvent);
+  }
+
   return event;
+};
+
+const canBuyAnchorCoop = (player, coopScore) => {
+  if (player.position !== -1 || player.anchorActive) return false;
+  return coopScore >= ANCHOR_COST;
 };
 
 const handleBuyAnchor = (state) => {
   if (state.turnPhase !== 'direction') return null;
   const player = state.players[state.currentPlayerIndex];
-  if (!canBuyAnchor(player)) return null;
 
-  // Deduct cost
-  let remaining = ANCHOR_COST;
-  player.scored.sort((a, b) => a.value - b.value);
-  while (remaining > 0 && player.scored.length > 0) {
-    const chip = player.scored[0];
-    if (chip.value <= remaining) { remaining -= chip.value; player.scored.shift(); }
-    else { chip.value -= remaining; remaining = 0; }
+  if (state.coop) {
+    // Co-op: spend from shared pool
+    if (!canBuyAnchorCoop(player, state.coopScore)) return null;
+    state.coopScore -= ANCHOR_COST;
+    player.anchorActive = true;
+    addLog(state, `⚓ ${player.name} purchases an Anchor Boost! (spent ${ANCHOR_COST} pts from team pool, pool → ${state.coopScore})`);
+  } else {
+    // Versus: spend from individual scored chips
+    if (!canBuyAnchor(player)) return null;
+    let remaining = ANCHOR_COST;
+    player.scored.sort((a, b) => a.value - b.value);
+    while (remaining > 0 && player.scored.length > 0) {
+      const chip = player.scored[0];
+      if (chip.value <= remaining) { remaining -= chip.value; player.scored.shift(); }
+      else { chip.value -= remaining; remaining = 0; }
+    }
+    player.anchorActive = true;
+    addLog(state, `⚓ ${player.name} purchases an Anchor Boost! (spent ${ANCHOR_COST} value)`);
   }
-  player.anchorActive = true;
-  addLog(state, `⚓ ${player.name} purchases an Anchor Boost! (spent ${ANCHOR_COST} value)`);
   return { lastAnchor: { player: player.name } };
 };
 
@@ -302,7 +434,8 @@ const handleRoll = (state) => {
     player.anchorActive = false;
   }
   const effectiveSteps = Math.max(1, adjustedTotal - player.carried.length);
-  const dest = computeDestination(player.position, effectiveSteps, player.direction, occupied, state.boardSize);
+  const monsters = (state.coop && state.mission === 'monsters') ? getMonsterPositions(state.chips) : null;
+  const dest = computeDestination(player.position, effectiveSteps, player.direction, occupied, state.boardSize, monsters);
   player.position = dest;
 
   state.diceResult = total;
@@ -311,15 +444,25 @@ const handleRoll = (state) => {
   const event = { diceTotal: total };
 
   if (dest === -1) {
-    player.scored.push(...player.carried);
     const scoredCount = player.carried.length;
-    player.carried = [];
+    if (state.coop) {
+      const value = player.carried.reduce((s, c) => s + c.value, 0);
+      state.coopScore += value;
+      player.carried = [];
+    } else {
+      player.scored.push(...player.carried);
+      player.carried = [];
+    }
     const anchorTag = adjustedTotal !== total ? ` ⚓×${ANCHOR_MULTIPLIER}→${adjustedTotal}` : '';
     addLog(state, `${player.name} rolled ${total}${anchorTag} (moves ${effectiveSteps}) and returned to the submarine! 🚢`);
     state.turnPhase = 'endTurn';
     endTurn(state);
     event.lastEvent = { type: 'returnSub', player: player.name, detail: `Secured ${scoredCount} chip(s)!` };
-    if (state.gameOver) { event.lastEvent = { type: 'gameOver', player: state.winner }; }
+    if (state.gameOver) {
+      if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+      else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+      else event.lastEvent = { type: 'gameOver', player: state.winner };
+    }
     event.returnedToSub = true;
   } else {
     const anchorTag = adjustedTotal !== total ? ` ⚓×${ANCHOR_MULTIPLIER}→${adjustedTotal}` : '';
@@ -333,7 +476,8 @@ const handleRoll = (state) => {
 const handlePickUp = (state) => {
   if (state.turnPhase !== 'pickup') return null;
   const player = state.players[state.currentPlayerIndex];
-  if (!canPickUp(player, state.chips)) return null;
+  const pickCheck = state.coop ? canPickUpCoop(player, state.chips) : canPickUp(player, state.chips);
+  if (!pickCheck) return null;
   const chip = state.chips[player.position];
   const chipLevel = chip.level, chipValue = chip.value;
   chip.discovered = true;
@@ -343,7 +487,11 @@ const handlePickUp = (state) => {
   state.turnPhase = 'endTurn';
   const event = { lastEvent: { type: 'pickup', player: player.name, detail: `Level ${chipLevel} chip (value: ${chipValue})` } };
   endTurn(state);
-  if (state.gameOver) event.lastEvent = { type: 'gameOver', player: state.winner };
+  if (state.gameOver) {
+    if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+    else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+    else event.lastEvent = { type: 'gameOver', player: state.winner };
+  }
   return event;
 };
 
@@ -357,7 +505,11 @@ const handleDrop = (state) => {
   state.turnPhase = 'endTurn';
   const event = { lastEvent: { type: 'drop', player: player.name } };
   endTurn(state);
-  if (state.gameOver) event.lastEvent = { type: 'gameOver', player: state.winner };
+  if (state.gameOver) {
+    if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+    else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+    else event.lastEvent = { type: 'gameOver', player: state.winner };
+  }
   return event;
 };
 
@@ -366,7 +518,11 @@ const handleSkip = (state) => {
   state.turnPhase = 'endTurn';
   endTurn(state);
   const event = { lastSkip: true };
-  if (state.gameOver) event.lastEvent = { type: 'gameOver', player: state.winner };
+  if (state.gameOver) {
+    if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+    else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+    else event.lastEvent = { type: 'gameOver', player: state.winner };
+  }
   return event;
 };
 
@@ -394,7 +550,11 @@ const handleTrident = (state, { targetId }) => {
 
   state.turnPhase = 'endTurn';
   endTurn(state);
-  if (state.gameOver) event.lastEvent = { type: 'gameOver', player: state.winner };
+  if (state.gameOver) {
+    if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+    else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+    else event.lastEvent = { type: 'gameOver', player: state.winner };
+  }
   return event;
 };
 
@@ -411,7 +571,81 @@ const handleDepthCharge = (state) => {
   state.turnPhase = 'endTurn';
   const event = { lastExplosion: { player: player.name, detail: `Level ${chipLevel} chip (value: ${chipValue}) destroyed!` } };
   endTurn(state);
-  if (state.gameOver) event.lastEvent = { type: 'gameOver', player: state.winner };
+  if (state.gameOver) {
+    if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+    else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+    else event.lastEvent = { type: 'gameOver', player: state.winner };
+  }
+  return event;
+};
+
+const handleBuyBomb = (state) => {
+  if (!state.coop || state.turnPhase !== 'direction') return null;
+  const player = state.players[state.currentPlayerIndex];
+  if (!canBuyBomb(player, state.coopScore)) return null;
+  state.coopScore -= COOP_BOMB_COST;
+  player.bombs = (player.bombs || 0) + 1;
+  addLog(state, `💣 ${player.name} buys a bomb! (cost: ${COOP_BOMB_COST} pts from team pool, pool → ${state.coopScore})`);
+  return { lastEvent: { type: 'bomb-buy', player: player.name, detail: `Bought a bomb! (${player.bombs} total)` } };
+};
+
+const handleUseBomb = (state) => {
+  if (!state.coop || state.turnPhase !== 'pickup') return null;
+  const player = state.players[state.currentPlayerIndex];
+  if (!canUseBomb(player, state.chips)) return null;
+  const pos = player.position;
+  let targetPos = -1;
+  if (pos + 1 < state.boardSize && state.chips[pos + 1] && state.chips[pos + 1].monster) {
+    targetPos = pos + 1;
+  } else if (pos - 1 >= 0 && state.chips[pos - 1] && state.chips[pos - 1].monster) {
+    targetPos = pos - 1;
+  }
+  if (targetPos === -1) return null;
+  state.chips[targetPos] = null;
+  player.bombs -= 1;
+  state.monstersRemaining = state.chips.filter(c => c && c.monster).length;
+  addLog(state, `💥 ${player.name} bombs the sea monster on space ${targetPos}! 🐙💀 (${state.monstersRemaining} remaining)`);
+  state.turnPhase = 'endTurn';
+  const event = { lastExplosion: { player: player.name, detail: `Sea monster destroyed! (${state.monstersRemaining} remaining)` } };
+  endTurn(state);
+  if (state.gameOver) {
+    if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+    else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+  }
+  return event;
+};
+
+const handleSkipSubTurn = (state) => {
+  if (state.turnPhase !== 'direction') return null;
+  const player = state.players[state.currentPlayerIndex];
+  if (player.position !== -1) return null;
+  // Can't skip if everyone is still on the sub (first turn)
+  const alive = state.players.filter(p => !p.dead);
+  if (alive.every(p => p.position === -1)) return null;
+  addLog(state, `${player.name} stays on the submarine. ⏭️`);
+  state.turnPhase = 'endTurn';
+  endTurn(state);
+  const event = { lastSkip: true };
+  if (state.gameOver) {
+    if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+    else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+    else event.lastEvent = { type: 'gameOver', player: state.winner };
+  }
+  return event;
+};
+
+const handleEndRoundEarly = (state) => {
+  if (!state.coop || state.turnPhase !== 'direction') return null;
+  if (!allPlayersOnSub(state.players)) return null;
+  addLog(state, `🚢 Team agrees to end the round early!`);
+  endRound(state);
+  const event = {};
+  if (state.gameOver) {
+    if (state.coopWin) event.lastEvent = { type: 'coopWin', player: 'Team', detail: 'Mission complete! 🎉' };
+    else if (state.coopLose) event.lastEvent = { type: 'coopLose', player: 'Team', detail: 'Mission failed… 💀' };
+  } else {
+    event.lastEvent = { type: 'roundEnd', detail: `Round ${state.round} begins` };
+  }
   return event;
 };
 
@@ -422,8 +656,12 @@ const ACTION_HANDLERS = {
   'pick-up':          handlePickUp,
   'drop':             handleDrop,
   'skip':             handleSkip,
+  'skip-sub-turn':    handleSkipSubTurn,
+  'end-round-early':  handleEndRoundEarly,
   'trident':          handleTrident,
   'depth-charge':     handleDepthCharge,
+  'buy-bomb':         handleBuyBomb,
+  'use-bomb':         handleUseBomb,
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -470,7 +708,7 @@ const broadcastState = (room, event = {}) => {
 const broadcastLobby = (room) => {
   const names = room.names;
   for (const [ws, info] of room.clients) {
-    send(ws, { type: 'lobby', code: room.code, names, you: info.name });
+    send(ws, { type: 'lobby', code: room.code, names, you: info.name, coop: room.coop || false, mission: room.mission || null });
   }
 };
 
@@ -544,12 +782,14 @@ wss.on('connection', (ws) => {
           names: [name],
           state: null,
           started: false,
+          coop: msg.coop || false,
+          mission: msg.mission || null,
         };
         room.clients.set(ws, { name, playerId: 0 });
         rooms.set(code, room);
         send(ws, { type: 'created', code });
         broadcastLobby(room);
-        console.log(`Room ${code} created by ${name}`);
+        console.log(`Room ${code} created by ${name}${room.coop ? ` (co-op: ${room.mission})` : ''}`);
         break;
       }
 
@@ -579,12 +819,20 @@ wss.on('connection', (ws) => {
         if (ws !== room.host) { send(ws, { type: 'error', message: 'Only the host can start.' }); break; }
         if (room.names.length < MIN_PLAYERS) { send(ws, { type: 'error', message: `Need at least ${MIN_PLAYERS} players.` }); break; }
 
-        room.state = createGameState(room.names);
+        if (room.coop && room.mission) {
+          room.state = createCoopGameState(room.names, room.mission);
+          const missionLabel = room.mission === 'treasure'
+            ? `Treasure Haul — collect ${room.state.coopTarget} pts together!`
+            : `Monster Hunt — destroy all ${room.state.monstersRemaining} sea monsters!`;
+          room.state.log.push(`=== Co-op: ${missionLabel} ===`);
+        } else {
+          room.state = createGameState(room.names);
+        }
         room.state.log.push(`=== Round 1 begins. Oxygen: ${room.state.oxygen} ===`);
         room.started = true;
 
         broadcastState(room);
-        console.log(`Game started in room ${room.code} with ${room.names.length} players`);
+        console.log(`Game started in room ${room.code} with ${room.names.length} players${room.coop ? ' (co-op)' : ''}`);
         break;
       }
 
@@ -618,7 +866,15 @@ wss.on('connection', (ws) => {
         if (!room) break;
         if (ws !== room.host) break;
 
-        room.state = createGameState(room.names);
+        if (room.coop && room.mission) {
+          room.state = createCoopGameState(room.names, room.mission);
+          const missionLabel = room.mission === 'treasure'
+            ? `Treasure Haul — collect ${room.state.coopTarget} pts together!`
+            : `Monster Hunt — destroy all ${room.state.monstersRemaining} sea monsters!`;
+          room.state.log.push(`=== Co-op: ${missionLabel} ===`);
+        } else {
+          room.state = createGameState(room.names);
+        }
         room.state.log.push(`=== Round 1 begins. Oxygen: ${room.state.oxygen} ===`);
         broadcastState(room);
         console.log(`Game restarted in room ${room.code}`);

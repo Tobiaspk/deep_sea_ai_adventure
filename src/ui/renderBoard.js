@@ -39,9 +39,15 @@ export const renderBoard = (container, state) => {
     const chip = state.chips[i];
     if (chip) {
       const chipEl = document.createElement('div');
-      chipEl.className = `chip level-${chip.level}`;
-      chipEl.textContent = chip.discovered ? chip.value : '?';
-      chipEl.title = `Level ${chip.level}`;
+      if (chip.monster) {
+        chipEl.className = 'chip monster-chip';
+        chipEl.textContent = '🐙';
+        chipEl.title = 'Sea Monster — bomb it to destroy!';
+      } else {
+        chipEl.className = `chip level-${chip.level}`;
+        chipEl.textContent = chip.discovered ? chip.value : '?';
+        chipEl.title = `Level ${chip.level}`;
+      }
       space.appendChild(chipEl);
     } else {
       const empty = document.createElement('div');

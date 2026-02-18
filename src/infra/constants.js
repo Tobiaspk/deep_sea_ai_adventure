@@ -43,3 +43,11 @@ export const ANCHOR_MULTIPLIER = 5;
 
 /** Player colours for rendering. */
 export const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'];
+
+/* ── Co-op constants ──────────────────────────────────────── */
+
+/** Points required per player for the Treasure Haul mission. */
+export const COOP_TREASURE_PER_PLAYER = 30;
+
+/** Cost (in shared score) to buy a bomb in Monster Hunt mission. */
+export const COOP_BOMB_COST = 20;

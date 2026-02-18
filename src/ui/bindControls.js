@@ -30,9 +30,9 @@ export const bindControls = (container, state, opts = {}) => {
   container.appendChild(heading);
 
   const actions = getAvailableActions();
-  actions.forEach(({ id, label, action, trident, depthCharge, anchor }) => {
+  actions.forEach(({ id, label, action, trident, depthCharge, anchor, bomb }) => {
     const btn = document.createElement('button');
-    btn.className = 'action-btn' + (trident ? ' trident' : '') + (depthCharge ? ' depth-charge' : '') + (anchor ? ' anchor' : '');
+    btn.className = 'action-btn' + (trident ? ' trident' : '') + (depthCharge ? ' depth-charge' : '') + (anchor ? ' anchor' : '') + (bomb ? ' bomb' : '');
     btn.id = `btn-${id}`;
     btn.textContent = label;
     btn.addEventListener('click', action);
@@ -43,7 +43,7 @@ export const bindControls = (container, state, opts = {}) => {
 const phaseLabel = (phase) => {
   switch (phase) {
     case 'direction': return 'Choose direction';
-    case 'roll': return 'Roll the dice';
+    case 'roll': return 'Rolling the dice…';
     case 'pickup': return 'Pick up, drop, attack, detonate, or skip';
     default: return '';
   }

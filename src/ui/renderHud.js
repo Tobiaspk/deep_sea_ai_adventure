@@ -28,6 +28,34 @@ export const renderHud = (container, state) => {
   `;
   container.appendChild(info);
 
+  // ── Co-op mission status panel ──
+  if (state.coop) {
+    const coopPanel = document.createElement('div');
+    coopPanel.className = 'coop-status-panel';
+
+    if (state.mission === 'treasure') {
+      const pct = state.coopTarget > 0 ? Math.min(100, Math.round((state.coopScore / state.coopTarget) * 100)) : 0;
+      coopPanel.innerHTML = `
+        <div class="coop-mission-label">🤝 Co-op: Treasure Haul</div>
+        <div class="coop-score-row">
+          <span>Team Score: <strong>${state.coopScore}</strong> / ${state.coopTarget}</span>
+        </div>
+        <div class="coop-bar-track">
+          <div class="coop-bar-fill" style="width:${pct}%"></div>
+        </div>
+      `;
+    } else {
+      coopPanel.innerHTML = `
+        <div class="coop-mission-label">🤝 Co-op: Monster Hunt</div>
+        <div class="coop-score-row">
+          <span>Monsters: <strong>${state.monstersRemaining}</strong> remaining</span>
+          <span>Team Pool: <strong>${state.coopScore}</strong> pts</span>
+        </div>
+      `;
+    }
+    container.appendChild(coopPanel);
+  }
+
   // ── Player panels ──
   const panels = document.createElement('div');
   panels.className = 'player-panels';
@@ -42,11 +70,17 @@ export const renderHud = (container, state) => {
     const carryLabel = p.carried.length > 0
       ? `Carrying: ${p.carried.length} chip(s)`
       : 'Carrying: 0 chip(s)';
+    const bombLabel = state.coop && state.mission === 'monsters' ? `<div class="panel-bombs">💣 Bombs: ${p.bombs || 0}</div>` : '';
+    const anchorIndicator = p.anchorActive ? ' ⚓' : '';
+    const scoreLabel = state.coop
+      ? (anchorIndicator ? `<div class="panel-score">${anchorIndicator}</div>` : '')
+      : `<div class="panel-score">Score: ${playerScore(p)}${anchorIndicator}</div>`;
     panel.innerHTML = `
       <div class="panel-name" style="color:${PLAYER_COLORS[p.id]}">${p.name}</div>
       <div class="panel-pos">${posLabel} ${p.dead ? '' : (p.direction === 'up' ? '↑' : '↓')}</div>
       <div class="panel-carry">${carryLabel}</div>
-      <div class="panel-score">Score: ${playerScore(p)}${p.anchorActive ? ' ⚓' : ''}</div>
+      ${scoreLabel}
+      ${bombLabel}
     `;
     panels.appendChild(panel);
   });
@@ -56,10 +90,20 @@ export const renderHud = (container, state) => {
   if (state.gameOver) {
     const sb = document.createElement('div');
     sb.className = 'scoreboard';
-    sb.innerHTML = '<h2>🏆 Final Scores</h2>' +
-      scoreboard(state.players)
-        .map((s, i) => `<div class="score-row${i === 0 ? ' winner' : ''}">${i + 1}. ${s.name}: ${s.score} pts</div>`)
-        .join('');
+
+    if (state.coop) {
+      const result = state.coopWin ? '🎉 MISSION COMPLETE!' : '💀 MISSION FAILED';
+      const resultClass = state.coopWin ? 'coop-win' : 'coop-lose';
+      sb.innerHTML = `<h2 class="${resultClass}">${result}</h2>` +
+        `<div class="score-row">Team Score: ${state.coopScore} pts</div>` +
+        (state.mission === 'treasure' ? `<div class="score-row">Target: ${state.coopTarget} pts</div>` : '') +
+        (state.mission === 'monsters' ? `<div class="score-row">Monsters remaining: ${state.monstersRemaining}</div>` : '');
+    } else {
+      sb.innerHTML = '<h2>🏆 Final Scores</h2>' +
+        scoreboard(state.players)
+          .map((s, i) => `<div class="score-row${i === 0 ? ' winner' : ''}">${i + 1}. ${s.name}: ${s.score} pts</div>`)
+          .join('');
+    }
     container.appendChild(sb);
   }
 };

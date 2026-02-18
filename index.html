@@ -17,10 +17,18 @@
       <span class="title-wave">🌊</span>
     </h1>
 
-    <!-- Mode selection -->
+    <!-- Mode selection — Step 1: Local or Online -->
     <div id="mode-select">
-      <button id="mode-local-btn" class="mode-btn">🎲 Local Game</button>
-      <button id="mode-online-btn" class="mode-btn">🌐 Online Multiplayer</button>
+      <button id="mode-local-btn" class="mode-btn">🎲 Local (Same Screen)</button>
+      <button id="mode-online-btn" class="mode-btn">🌐 Online</button>
+    </div>
+
+    <!-- Mode selection — Step 2: Versus or Co-op -->
+    <div id="mode-type-select" style="display:none">
+      <button id="type-versus-btn" class="mode-btn">⚔️ Versus</button>
+      <button id="type-coop-btn" class="mode-btn coop-btn">🤝 Co-op</button>
+      <br />
+      <button id="back-to-step1-btn" class="back-btn">← Back</button>
     </div>
 
     <!-- Local setup screen -->
@@ -34,6 +42,38 @@
       <br />
       <button id="start-btn">Start Game</button>
       <button id="back-to-mode-btn" class="back-btn">← Back</button>
+      <p class="disclaimer">
+        This is an unofficial fan project and is <strong>not affiliated</strong> with the original creators.<br />
+        Inspired by Deep Sea Adventure, an awesome board game by <strong>Oink Games</strong> — if you enjoy it, please
+        <a href="https://oinkgames.com/en/games/analog/deep-sea-adventure/" target="_blank" rel="noopener">support the creators</a>
+        and buy the original! 🎲
+      </p>
+    </div>
+
+    <!-- Co-op setup screen -->
+    <div id="coop-setup" style="display:none">
+      <h2>🤝 Co-op Mission</h2>
+      <div id="coop-player-list">
+        <div class="player-input"><label>Player 1: <input type="text" class="coop-player-name" placeholder="Name" maxlength="12" /></label></div>
+        <div class="player-input"><label>Player 2: <input type="text" class="coop-player-name" placeholder="Name" maxlength="12" /></label></div>
+      </div>
+      <button id="coop-add-player-btn">+ Add Player</button>
+      <div class="mission-select">
+        <h3>Choose a Mission</h3>
+        <div class="mission-card selected" data-mission="treasure">
+          <div class="mission-icon">💰</div>
+          <div class="mission-title">Treasure Haul</div>
+          <div class="mission-desc">Collect <strong>30 points per player</strong> together as a team.<br/>Pool your treasure and hit the target!</div>
+        </div>
+        <div class="mission-card" data-mission="monsters">
+          <div class="mission-icon">🐙</div>
+          <div class="mission-title">Monster Hunt</div>
+          <div class="mission-desc">Sea monsters block the path — one per player! Buy bombs on the sub (20 pts) to destroy them.<br/>Destroy all monsters and get everyone home safely!</div>
+        </div>
+      </div>
+      <br />
+      <button id="coop-start-btn">Start Mission</button>
+      <button id="back-to-mode-btn-coop" class="back-btn">← Back</button>
       <p class="disclaimer">
         This is an unofficial fan project and is <strong>not affiliated</strong> with the original creators.<br />
         Inspired by Deep Sea Adventure, an awesome board game by <strong>Oink Games</strong> — if you enjoy it, please
@@ -71,6 +111,57 @@
       </div>
       <div id="lobby-error" class="lobby-error"></div>
       <button id="back-to-mode-btn-2" class="back-btn">← Back</button>
+      <p class="disclaimer">
+        This is an unofficial fan project and is <strong>not affiliated</strong> with the original creators.<br />
+        Inspired by Deep Sea Adventure, an awesome board game by <strong>Oink Games</strong> — if you enjoy it, please
+        <a href="https://oinkgames.com/en/games/analog/deep-sea-adventure/" target="_blank" rel="noopener">support the creators</a>
+        and buy the original! 🎲
+      </p>
+    </div>
+
+    <!-- Online co-op lobby -->
+    <div id="coop-lobby" style="display:none">
+      <h2>🌐🤝 Online Co-op</h2>
+      <div id="coop-lobby-connect">
+        <div class="mission-select">
+          <h3>Choose a Mission</h3>
+          <div class="mission-card selected" data-mission="treasure" id="coop-online-mission-treasure">
+            <div class="mission-icon">💰</div>
+            <div class="mission-title">Treasure Haul</div>
+            <div class="mission-desc">Collect <strong>30 points per player</strong> together as a team.</div>
+          </div>
+          <div class="mission-card" data-mission="monsters" id="coop-online-mission-monsters">
+            <div class="mission-icon">🐙</div>
+            <div class="mission-title">Monster Hunt</div>
+            <div class="mission-desc">Sea monsters block the path — one per player! Buy bombs to destroy them all!</div>
+          </div>
+        </div>
+        <div class="lobby-section">
+          <h3>Create a Co-op Room</h3>
+          <label>Your Name: <input type="text" id="coop-create-name" placeholder="Name" maxlength="12" /></label>
+          <br />
+          <button id="coop-create-room-btn" class="mode-btn coop-btn">Create Co-op Room</button>
+        </div>
+        <div class="lobby-divider">— or —</div>
+        <div class="lobby-section">
+          <h3>Join a Co-op Room</h3>
+          <label>Your Name: <input type="text" id="coop-join-name" placeholder="Name" maxlength="12" /></label>
+          <br />
+          <label>Room Code: <input type="text" id="coop-join-code" placeholder="ABCD" maxlength="4" style="text-transform:uppercase" /></label>
+          <br />
+          <button id="coop-join-room-btn" class="mode-btn coop-btn">Join Co-op Room</button>
+        </div>
+      </div>
+      <div id="coop-lobby-waiting" style="display:none">
+        <div class="room-code-display">Room Code: <strong id="coop-room-code-value"></strong></div>
+        <p>Share this code with teammates to let them join!</p>
+        <div id="coop-lobby-mission-label" class="coop-mission-label"></div>
+        <div id="coop-lobby-players"></div>
+        <button id="coop-start-online-btn" class="mode-btn coop-btn" style="display:none">🚀 Start Mission</button>
+        <p id="coop-lobby-wait-msg" class="lobby-hint">Waiting for host to start…</p>
+      </div>
+      <div id="coop-lobby-error" class="lobby-error"></div>
+      <button id="back-to-mode-btn-3" class="back-btn">← Back</button>
       <p class="disclaimer">
         This is an unofficial fan project and is <strong>not affiliated</strong> with the original creators.<br />
         Inspired by Deep Sea Adventure, an awesome board game by <strong>Oink Games</strong> — if you enjoy it, please

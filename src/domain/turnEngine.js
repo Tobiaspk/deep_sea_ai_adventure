@@ -11,8 +11,10 @@ import {
   isOnSubmarine,
   adjacentTargets,
   resolveTridentRoll,
+  getMonsterPositions,
+  allPlayersOnSub,
 } from './rules.js';
-import { STARTING_OXYGEN, TOTAL_ROUNDS, DEPTH_CHARGE_OXYGEN_COST, DEPTH_CHARGES_PER_ROUND, ANCHOR_COST, ANCHOR_MULTIPLIER } from '../infra/constants.js';
+import { STARTING_OXYGEN, TOTAL_ROUNDS, DEPTH_CHARGE_OXYGEN_COST, DEPTH_CHARGES_PER_ROUND, ANCHOR_COST, ANCHOR_MULTIPLIER, COOP_BOMB_COST } from '../infra/constants.js';
 import { createChips } from './gameState.js';
 
 /* ── per-turn oxygen consumption ──────────────────────────── */
@@ -67,6 +69,15 @@ export const buyAnchor = (state) => {
   return state;
 };
 
+/** Co-op: Buy an anchor boost using the shared co-op score pool. */
+export const buyAnchorCoop = (state) => {
+  const player = state.players[state.currentPlayerIndex];
+  state.coopScore -= ANCHOR_COST;
+  player.anchorActive = true;
+  addLog(state, `⚓ ${player.name} purchases an Anchor Boost! (spent ${ANCHOR_COST} pts from team pool, pool → ${state.coopScore})`);
+  return state;
+};
+
 /* ── movement ─────────────────────────────────────────────── */
 
 export const applyMovement = (state, diceTotal) => {
@@ -83,7 +94,9 @@ export const applyMovement = (state, diceTotal) => {
   // Reduce movement by number of carried chips
   const effectiveSteps = Math.max(1, adjustedTotal - player.carried.length);
 
-  const dest = computeDestination(player.position, effectiveSteps, player.direction, occupied, state.boardSize);
+  // In co-op monster mission, pass monster positions to block movement
+  const monsters = (state.coop && state.mission === 'monsters') ? getMonsterPositions(state.chips) : null;
+  const dest = computeDestination(player.position, effectiveSteps, player.direction, occupied, state.boardSize, monsters);
   const prevPos = player.position;
   player.position = dest;
 
@@ -92,8 +105,15 @@ export const applyMovement = (state, diceTotal) => {
 
   if (dest === -1) {
     // Returned to submarine — score carried chips
-    player.scored.push(...player.carried);
-    player.carried = [];
+    if (state.coop) {
+      // Co-op: add carried chip values to shared pool
+      const value = player.carried.reduce((s, c) => s + c.value, 0);
+      state.coopScore += value;
+      player.carried = [];
+    } else {
+      player.scored.push(...player.carried);
+      player.carried = [];
+    }
     const anchorTag = adjustedTotal !== diceTotal ? ` ⚓×${ANCHOR_MULTIPLIER}→${adjustedTotal}` : '';
     addLog(state, `${player.name} rolled ${diceTotal}${anchorTag} (moves ${effectiveSteps}) and returned to the submarine! 🚢`);
   } else {
@@ -195,11 +215,27 @@ const killPlayer = (state, player) => {
   player.position = -99;  // removed from board, but not on sub
 };
 
+/* ── skip sub turn ────────────────────────────────────────── */
+
+/** Skip the current player's turn while they are on the submarine. */
+export const skipSubTurn = (state) => {
+  const player = state.players[state.currentPlayerIndex];
+  addLog(state, `${player.name} stays on the submarine. ⏭️`);
+  state.turnPhase = 'endTurn';
+  return state;
+};
+
+/** End the current round early (co-op: all players agreed). */
+export const endRoundEarly = (state) => {
+  addLog(state, `🚢 Team agrees to end the round early!`);
+  return endRound(state);
+};
+
 /* ── end turn / round ─────────────────────────────────────── */
 
 export const endTurn = (state) => {
   // Check if round is over
-  if (isRoundOver(state.oxygen, state.players)) {
+  if (isRoundOver(state.oxygen, state.players, !!state.coop)) {
     return endRound(state);
   }
   // Advance to next player
@@ -247,16 +283,52 @@ export const endRound = (state) => {
   }
 
   // Compact the board: remove nulls, chips stay in order but gaps close
+  // In monster mode, keep monster chips in place (don't compact them away)
   const remainingChips = state.chips.filter((c) => c !== null);
   // Re-index so the board is dense again
   state.chips = remainingChips.map((c, i) => ({ ...c, id: i }));
   state.boardSize = state.chips.length;
 
+  // ── Co-op win/lose checks ──
+  if (state.coop) {
+    if (state.mission === 'treasure') {
+      if (state.coopScore >= state.coopTarget) {
+        state.gameOver = true;
+        state.coopWin = true;
+        state.turnPhase = 'gameOver';
+        addLog(state, `🎉 MISSION COMPLETE! Team scored ${state.coopScore} / ${state.coopTarget} points!`);
+        return state;
+      }
+    } else if (state.mission === 'monsters') {
+      // Count remaining monsters
+      const monstersLeft = state.chips.filter(c => c && c.monster).length;
+      state.monstersRemaining = monstersLeft;
+      const allHome = state.players.every(p => p.position === -1);
+      if (monstersLeft === 0 && allHome) {
+        state.gameOver = true;
+        state.coopWin = true;
+        state.turnPhase = 'gameOver';
+        addLog(state, `🎉 MISSION COMPLETE! All monsters destroyed and everyone is safe!`);
+        return state;
+      }
+    }
+  }
+
   if (state.round >= state.maxRounds) {
     state.gameOver = true;
     state.turnPhase = 'gameOver';
-    determineWinner(state);
-    addLog(state, `🏆 Game over! Winner: ${state.winner}!`);
+    if (state.coop) {
+      state.coopLose = true;
+      if (state.mission === 'treasure') {
+        addLog(state, `💀 Mission failed! Team scored ${state.coopScore} / ${state.coopTarget} points.`);
+      } else {
+        const monstersLeft = state.chips.filter(c => c && c.monster).length;
+        addLog(state, `💀 Mission failed! ${monstersLeft} monster(s) remain.`);
+      }
+    } else {
+      determineWinner(state);
+      addLog(state, `🏆 Game over! Winner: ${state.winner}!`);
+    }
     return state;
   }
 
@@ -275,6 +347,42 @@ export const endRound = (state) => {
 
 export const playerScore = (player) =>
   player.scored.reduce((sum, chip) => sum + chip.value, 0);
+
+/* ── Co-op: Bomb mechanics ────────────────────────────────── */
+
+/** Buy a bomb while on the submarine (costs from shared co-op pool). */
+export const buyBomb = (state) => {
+  const player = state.players[state.currentPlayerIndex];
+  if (player.position !== -1 || state.coopScore < COOP_BOMB_COST) return state;
+  state.coopScore -= COOP_BOMB_COST;
+  player.bombs = (player.bombs || 0) + 1;
+  addLog(state, `💣 ${player.name} buys a bomb! (cost: ${COOP_BOMB_COST} pts from team pool, pool → ${state.coopScore})`);
+  return state;
+};
+
+/** Use a bomb to destroy the monster at the player's adjacent position. */
+export const useBomb = (state) => {
+  const player = state.players[state.currentPlayerIndex];
+  if (!player.bombs || player.bombs <= 0) return state;
+  // Find the adjacent monster (the one blocking the player)
+  const pos = player.position;
+  // Check pos+1 and pos-1 for monsters
+  let targetPos = -1;
+  if (pos + 1 < state.boardSize && state.chips[pos + 1] && state.chips[pos + 1].monster) {
+    targetPos = pos + 1;
+  } else if (pos - 1 >= 0 && state.chips[pos - 1] && state.chips[pos - 1].monster) {
+    targetPos = pos - 1;
+  }
+  if (targetPos === -1) return state;
+
+  // Destroy the monster
+  state.chips[targetPos] = null;
+  player.bombs -= 1;
+  state.monstersRemaining = state.chips.filter(c => c && c.monster).length;
+  addLog(state, `💥 ${player.name} bombs the sea monster on space ${targetPos}! 🐙💀 (${state.monstersRemaining} remaining)`);
+  state.turnPhase = 'endTurn';
+  return state;
+};
 
 const determineWinner = (state) => {
   let best = -1;

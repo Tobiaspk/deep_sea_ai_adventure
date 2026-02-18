@@ -10,6 +10,8 @@ import {
   LEVEL_VALUE_RANGES,
   BOARD_SIZE,
   DEPTH_CHARGES_PER_ROUND,
+  COOP_TREASURE_PER_PLAYER,
+  COOP_BOMB_COST,
 } from '../infra/constants.js';
 
 /** Generate a random integer in [min, max] inclusive. */
@@ -45,6 +47,7 @@ export const createPlayer = (id, name) => ({
   dead: false,           // killed by Poseidon's Trident this round
   depthCharges: DEPTH_CHARGES_PER_ROUND, // depth charges remaining this round
   anchorActive: false,   // true if anchor purchased — next roll is multiplied
+  bombs: 0,              // co-op: bombs purchased to destroy monsters
 });
 
 /**
@@ -71,3 +74,72 @@ export const createGameState = (playerNames) => {
 
 /** Deep-clone the state (simple JSON round-trip, fine for this size). */
 export const cloneState = (state) => JSON.parse(JSON.stringify(state));
+
+/* ── Co-op game state ─────────────────────────────────────── */
+
+/**
+ * Create chips for Monster Hunt: normal chips + one monster per player,
+ * evenly spaced so there are enough treasure chips before each monster
+ * for the team to collect and fund bombs.
+ */
+const createMonsterChips = (monsterCount) => {
+  const chips = createChips();
+  // Place monsters evenly in the range [6 .. boardSize-3]
+  // This guarantees the first ~6 chips are always collectible treasure,
+  // and there's a gap of treasure between each monster.
+  const lo = 6;
+  const hi = chips.length - 3;
+  const span = hi - lo;
+  const positions = [];
+  for (let i = 0; i < monsterCount; i++) {
+    const pos = lo + Math.round((span / (monsterCount + 1)) * (i + 1));
+    positions.push(pos);
+  }
+  for (const pos of positions) {
+    chips[pos] = {
+      id: pos,
+      level: 'monster',
+      value: 0,
+      discovered: true,
+      monster: true,
+    };
+  }
+  return chips;
+};
+
+/**
+ * Create a co-op game state.
+ * @param {string[]} playerNames
+ * @param {'treasure'|'monsters'} mission
+ */
+export const createCoopGameState = (playerNames, mission) => {
+  const players = playerNames.map((name, i) => createPlayer(i, name));
+  const isMonsterMission = mission === 'monsters';
+  const monsterCount = playerNames.length;
+  const chips = isMonsterMission ? createMonsterChips(monsterCount) : createChips();
+
+  return {
+    round: 1,
+    maxRounds: TOTAL_ROUNDS,
+    oxygen: STARTING_OXYGEN,
+    boardSize: BOARD_SIZE,
+    chips,
+    players,
+    currentPlayerIndex: 0,
+    turnPhase: 'direction',
+    diceResult: null,
+    roundOver: false,
+    gameOver: false,
+    winner: null,
+    log: [],
+    // Co-op fields
+    coop: true,
+    mission,                          // 'treasure' | 'monsters'
+    coopScore: 0,                     // shared pool of scored treasure
+    coopTarget: mission === 'treasure' ? COOP_TREASURE_PER_PLAYER * playerNames.length : null,
+    monstersRemaining: isMonsterMission ? monsterCount : 0,
+    coopWin: false,
+    coopLose: false,
+    bombCost: COOP_BOMB_COST,
+  };
+};
